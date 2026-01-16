@@ -890,7 +890,7 @@ begin
 end
 
 # ╔═╡ 5ef83150-411c-4bc9-9070-0bb0ef7448f0
-LocalResource("Figure5_heatmap_and_bar_plots2.jpg")
+LocalResource("Figure5_heatmap_and_bar_plots.jpg")
 
 # ╔═╡ 821b803d-7f43-466e-9a73-47775d7de9ee
 md"""
@@ -4018,7 +4018,7 @@ version = "1.13.0+0"
 # ╟─41f8dcef-516d-47ef-93b9-24ddd4edb56a
 # ╟─ac176e07-d6de-4abe-a1fd-b24dea036c69
 # ╟─31e65220-129d-40b7-9ece-b90a6fe96d54
-# ╟─5ef83150-411c-4bc9-9070-0bb0ef7448f0
+# ╠═5ef83150-411c-4bc9-9070-0bb0ef7448f0
 # ╟─821b803d-7f43-466e-9a73-47775d7de9ee
 # ╟─0dff516f-5670-4e2a-8003-183d27ef9a0d
 # ╟─00000000-0000-0000-0000-000000000001
