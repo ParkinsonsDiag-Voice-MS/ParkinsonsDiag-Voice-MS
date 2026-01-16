@@ -67,7 +67,7 @@ end
 
 # ╔═╡ bdac137e-4559-4e9a-a647-4f89cb5ff886
 begin
-    include("/home/rvc/JuliaShare/ADASYN_v1.jl")
+    include("../01.Production code and results/ADASYN_v1.jl")
     using .ADASYN
 end
 
@@ -84,7 +84,7 @@ end
 
 # ╔═╡ 597de6dd-a4de-4075-97e5-9e5ba8bcccff
   # call functions file
-    include("/home/rvc/JuliaShare/functions_opt_grid_v9.jl")
+    include("../01.Production code and results/functions_opt_grid_v9.jl")
 
 # ╔═╡ 1fe12cff-b2c9-4b7a-865e-86ec097d4ac7
 # ╠═╡ disabled = true
