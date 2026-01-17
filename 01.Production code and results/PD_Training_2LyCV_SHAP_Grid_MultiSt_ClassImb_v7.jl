@@ -71,16 +71,16 @@ begin
     using .ADASYN
 end
 
-# ╔═╡ fa6317b7-8a67-4a82-a744-021c16344030
-#save to files
-using JLD2
-
 # ╔═╡ 71a77846-41da-4f29-9e1b-282dba9c8701
 begin
 	using LIBSVM
 	# Load SVM model once to avoid repeated loading messages
     SVM = @load ProbabilisticSVC pkg=LIBSVM verbosity=0
 end
+
+# ╔═╡ fa6317b7-8a67-4a82-a744-021c16344030
+#save to files
+using JLD2
 
 # ╔═╡ 597de6dd-a4de-4075-97e5-9e5ba8bcccff
   # call functions file
@@ -352,17 +352,21 @@ md"""
     
     **Full analysis:** To replicate the results of the paper, use the recommended parameters:
 		
+	* Generate files: tick to export results to csv and jdl2 files
 	* Nr of Outer Folds: 5
 	* Nr of Inner Folds: 3
 	* Top Features Candidates: 100
 	* Grid Resolution: 7 (grid search 7x7)
 	* Nr Models for AdaBoost: 50
+	* SHAP sample size: 60
 
 	This may take up to 5 hours.
 """
 
 # ╔═╡ 2d1941a3-c6f9-49fd-98b9-a661aa553133
 md"""
+Generate files: $(@bind files CheckBox())
+
 Nr of Outer Folds: $(@bind N_o_fold Select([3, 5], default=3))
 
 Nr of Inner Folds: $(@bind N_i_fold Select([2, 3], default=2))
@@ -372,6 +376,9 @@ Nr of Inner Folds: $(@bind N_i_fold Select([2, 3], default=2))
 Grid Resolution: $(@bind g_reso Select([2, 3 , 4 ,5 ,6 ,7], default=2))
 
 Nr Models for AdaBoost: $(@bind s_reso Select([5, 10, 20, 30, 40, 50], default=5))
+
+SHAP Sample Size: $(@bind samp_sz Select([10, 30, 60], default=10))
+
 """
 
 # ╔═╡ 7cdc1aff-50aa-47bc-bc44-5bb23e42c929
@@ -579,11 +586,6 @@ md"""
 ### SHAP value feature importance
 """
 
-# ╔═╡ 10adce7b-58ce-4999-af40-09b64910e582
-md"""
-Sample Size: $(@bind samp_sz Select([10, 30, 60], default=10))
-"""
-
 # ╔═╡ bd3a217e-e7e6-4ee8-a80f-eb325504bf39
 md"""
 #### SHAP value feature importance: ADSYN Oversampling
@@ -728,67 +730,77 @@ subject_level_db = create_subject_level_database(
     all_results_adasyn,
     subjects_map;
     n_outer_folds = n_outer_folds,
-    random_seed = random_seed
-)
-# Export all configurations
-predictions_detailed = export_predictions_detailed(
-    subject_level_db;
-    filename = "subject_predictions_detailed.csv",
-    n_outer_folds = n_outer_folds
-)
+    random_seed = random_seed)
 
-# Preview
-println("\nFirst 10 rows:")
-display(first(predictions_detailed, 10))
+	# Export all configurations
+	if files
+		predictions_detailed = export_predictions_detailed(
+    	subject_level_db;
+    	filename = "subject_predictions_detailed.csv",
+    	n_outer_folds = n_outer_folds)
+	
+	# Preview
+	println("\nFirst 10 rows:")
+	display(first(predictions_detailed, 10))
+
+	else
+        println("Check 'Generate files' to create CSV exports")
+	end
 	
 end;
 
 # ╔═╡ f96479de-077b-47e7-936f-85570992f4d6
 begin
-    # Remove vector columns
-    #db_metrics = select(subject_level_db, Not([:subject_ids, :y_true, :y_pred]))
     
+    if files
     # Export to CSV
-    CSV.write("subject_level_data_$(Dates.format(now(), "yyyymmdd_HHMMSS")).csv", subject_level_db)
+    	CSV.write("subject_level_data_$(Dates.format(now(), "yyyymmdd_HHMMSS")).csv", subject_level_db)
     
-    println("✓ Exported $(nrow(subject_level_db)) configurations to CSV")
+    	println("✓ Exported $(nrow(subject_level_db)) configurations to CSV")
+	else
+    	println("Check 'Generate files' to create CSV exports")
+	end
+
 end
 
 # ╔═╡ 7554749c-9295-4f52-9b98-8e4cf4dedd86
 begin
-    # Export ADASYN results
-    export_all_results_to_csv(all_results_adasyn, top_n_feats_candidates, "ADASYN")
+	if files    
+		# Export ADASYN results
+    	export_all_results_to_csv(all_results_adasyn, top_n_feats_candidates,
+								  "ADASYN")
     
-    # Save to JLD2
-    @save "results_ADASYN_$(Dates.format(now(), "yyyymmdd_HHMMSS")).jld2" all_results_adasyn Xb Xs Xm Xf yb ym yf subjects_b subjects_m subjects_f feature_names_b feature_names_s feature_names_m feature_names_f sex_vector_b top_n_feats_candidates n_outer_folds n_inner_folds n_features_max consensus_threshold random_seed all_datasets_shap_adasyn subject_level_db
+    	# Save to JLD2
+    	@save "results_ADASYN_$(Dates.format(now(), "yyyymmdd_HHMMSS")).jld2" all_results_adasyn Xb Xs Xm Xf yb ym yf subjects_b subjects_m subjects_f feature_names_b feature_names_s feature_names_m feature_names_f sex_vector_b top_n_feats_candidates n_outer_folds n_inner_folds n_features_max consensus_threshold random_seed all_datasets_shap_adasyn subject_level_db
     
-    println("✓ ADASYN results exported")
+    	println("✓ ADASYN results exported")
 
-# Export sex-stratified baseline PERFORMANCE
-    if haskey(all_results_adasyn, "baseline")
-        baseline_outer_folds = stratified_subject_level_cv(
-            subjects_b, yb, n_outer_folds; random_seed=random_seed
-        )
+		# Export sex-stratified baseline PERFORMANCE
+    	if haskey(all_results_adasyn, "baseline")
+        	baseline_outer_folds = stratified_subject_level_cv(
+            	subjects_b, yb, n_outer_folds; random_seed=random_seed)
 
-        export_baseline_sex_stratified(
-            all_results_adasyn["baseline"],
-            top_n_feats_candidates,
-            "ADASYN",
-            sex_vector_b,
-            baseline_outer_folds
-        )
-    end
+        	export_baseline_sex_stratified(
+				all_results_adasyn["baseline"],
+				top_n_feats_candidates,
+				"ADASYN",
+				sex_vector_b,
+				baseline_outer_folds
+			)
+    	end
 
-    # ✅ Export sex-stratified baseline SHAP
-    if haskey(all_datasets_shap_adasyn, "baseline")
-        export_baseline_sex_stratified_shap(
-            all_datasets_shap_adasyn,
-            top_n_feats_candidates,
-            "ADASYN"
-        )
-    end
-
+    	# ✅ Export sex-stratified baseline SHAP
+    	if haskey(all_datasets_shap_adasyn, "baseline")
+        	export_baseline_sex_stratified_shap(
+				all_datasets_shap_adasyn,
+				top_n_feats_candidates,
+				"ADASYN")
+    	end
+	else
+    	println("Check 'Generate files' to create CSV exports")
 	
+	
+	end
 end
 
 # ╔═╡ dc252f0f-4043-442a-9c5b-b631b3ce39e3
@@ -3462,14 +3474,13 @@ version = "1.9.2+0"
 # ╠═fa6317b7-8a67-4a82-a744-021c16344030
 # ╟─7bee437d-126f-4c6d-b10d-c5d24aba704f
 # ╟─f1eeb5bf-36db-4a4f-8710-b7145ca9489d
-# ╟─3a59ce3a-f738-49f7-9f7b-0917f375aadd
+# ╠═3a59ce3a-f738-49f7-9f7b-0917f375aadd
 # ╟─2d1941a3-c6f9-49fd-98b9-a661aa553133
 # ╟─7cdc1aff-50aa-47bc-bc44-5bb23e42c929
 # ╟─1064fe4e-8c6e-4b74-b979-43a08f34b361
-# ╠═5a24c5a7-9e56-4a0b-a57b-628e45adc207
-# ╠═92c1eb07-b9cc-4a44-aede-6b9b1c40fb8e
+# ╟─5a24c5a7-9e56-4a0b-a57b-628e45adc207
+# ╟─92c1eb07-b9cc-4a44-aede-6b9b1c40fb8e
 # ╟─24f1877f-c33f-402a-93f5-ec407056fd52
-# ╟─10adce7b-58ce-4999-af40-09b64910e582
 # ╠═bd3a217e-e7e6-4ee8-a80f-eb325504bf39
 # ╠═42b7421b-52e9-476a-8549-2e2c05b5cafc
 # ╠═43395906-5291-4547-b2ab-242570c178d1
