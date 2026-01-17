@@ -144,7 +144,7 @@ All package dependencies are loaded directly inside the Pluto notebooks.
 		-  results_sex aware_(ADASYN)_yyyymmdd_HHMMSS.csv
 		-  shap_baseline_sex_stratified_ADASYN_yyyymmdd_HHMMSS.csv
 
-7. Run the visualization notebook:
+7. open the visualization notebook and update the names of the files to be loaded with ones genetared during your run:
 	```julia
 	..\02.Visualization code\PD_Visuals_ADSYN_models_v5.jl
 	```
