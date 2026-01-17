@@ -96,7 +96,7 @@ All package dependencies are loaded directly inside the Pluto notebooks.
 
 1. Install Julia ,follow  instructions at https://julialang.org/downloads/
 
-2. run Julia and Install Pluto: 
+2. Run Julia and Install Pluto: 
 
 	```julia
 		using Pkg
@@ -119,12 +119,13 @@ All package dependencies are loaded directly inside the Pluto notebooks.
 	..\01.Production code and results\PD_Training_2LyCV_SHAP_Grid_MultiSt_ClassImb_v7.jl
 	```
   
-	b. run the notebook so all dependencies are loaded and installed, the notebook will start with 'quick start' parameters for a fast 
+	b. Run the notebook so all dependencies are loaded and installed, the notebook will start with 'quick start' parameters for a fast 
 	   1st run
    
-	c. change the configuration paramters to the recommended settings to match the paper results:
+	c. Change the configuration paramters to the recommended settings to match the paper results:
 
-		- Nr of Outer Folds: 5
+		-  Tick checkbox "Generate files" to Export results to csv and jl2d files
+   		-  Nr of Outer Folds: 5
 		-  Nr of Inner Folds: 3
 		-  Top Features Candidates: 100
 		-  Grid Resolution: 7 (grid search 7x7)
@@ -132,7 +133,7 @@ All package dependencies are loaded directly inside the Pluto notebooks.
 	
 	This files will be generated and must be copied to the visualization folder:
 
-   		-  results_ADASYN_yyyymmdd_HHMMSS.jdl
+   		-  results_ADASYN_yyyymmdd_HHMMSS.jld2
 		-  subject_predictions_detailed.csv
 		-  subject_level_data_yyyymmdd_HHMMSS
 		-  results_baseline_(ADASYN)_yyyymmdd_HHMMSS.csv
