@@ -406,6 +406,35 @@ begin
     nothing
 end;
 
+# ╔═╡ ebf531d3-8405-4b62-b4bc-98ed91e2e042
+begin
+   
+    apply_config  # ADD THIS - makes cell re-run on button click
+    
+    if config_snapshot[] !== nothing
+        global files = config_snapshot[][1]
+        global N_o_fold = config_snapshot[][2]
+        global N_i_fold = config_snapshot[][3]
+        global tpf_can = collect(10:10:config_snapshot[][4])
+        global g_reso = config_snapshot[][5]
+        global s_reso = config_snapshot[][6]
+        global samp_sz = config_snapshot[][7]
+        
+        Markdown.parse("""
+        !!! success "Applied Settings"
+            - **Generate Files:** $(files ? "✓ Yes" : "✗ No")
+            - **Outer Folds:** $(N_o_fold)
+            - **Inner Folds:** $(N_i_fold)  
+            - **Top Features:** $(tpf_can))
+            - **Grid Resolution:** $(g_reso)
+            - **AdaBoost Models:** $(s_reso)
+            - **SHAP Sample Size:** $(samp_sz)
+        """)
+    else
+        md"*Click Apply to set configuration*"
+    end
+end
+
 # ╔═╡ 7cdc1aff-50aa-47bc-bc44-5bb23e42c929
 begin
 	# ========================================================================
@@ -826,56 +855,6 @@ begin
 	
 	
 	end
-end
-
-# ╔═╡ 2d1941a3-c6f9-49fd-98b9-a661aa553133
-# ╠═╡ disabled = true
-#=╠═╡
-md"""
-Generate files: $(@bind files CheckBox())
-
-Nr of Outer Folds: $(@bind N_o_fold Select([3, 5], default=3))
-
-Nr of Inner Folds: $(@bind N_i_fold Select([2, 3], default=2))
-
-#Top Features Candidates: $(@bind tpf_can Select([10, 20, 30, 40, 50, 60, 70, 80, 90, 100], default=10))
-
-Grid Resolution: $(@bind g_reso Select([2, 3 , 4 ,5 ,6 ,7], default=2))
-
-Nr Models for AdaBoost: $(@bind s_reso Select([5, 10, 20, 30, 40, 50], default=5))
-
-SHAP Sample Size: $(@bind samp_sz Select([10, 30, 60], default=10))
-
-"""
-  ╠═╡ =#
-
-# ╔═╡ ebf531d3-8405-4b62-b4bc-98ed91e2e042
-begin
-   
-    apply_config  # ADD THIS - makes cell re-run on button click
-    
-    if config_snapshot[] !== nothing
-        global files = config_snapshot[][1]
-        global N_o_fold = config_snapshot[][2]
-        global N_i_fold = config_snapshot[][3]
-        global tpf_can = collect(10:10:config_snapshot[][4])
-        global g_reso = config_snapshot[][5]
-        global s_reso = config_snapshot[][6]
-        global samp_sz = config_snapshot[][7]
-        
-        Markdown.parse("""
-        !!! success "Applied Settings"
-            - **Generate Files:** $(files ? "✓ Yes" : "✗ No")
-            - **Outer Folds:** $(N_o_fold)
-            - **Inner Folds:** $(N_i_fold)  
-            - **Top Features:** $(tpf_can))
-            - **Grid Resolution:** $(g_reso)
-            - **AdaBoost Models:** $(s_reso)
-            - **SHAP Sample Size:** $(samp_sz)
-        """)
-    else
-        md"*Click Apply to set configuration*"
-    end
 end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
@@ -3544,7 +3523,6 @@ version = "1.9.2+0"
 # ╟─7bee437d-126f-4c6d-b10d-c5d24aba704f
 # ╟─f1eeb5bf-36db-4a4f-8710-b7145ca9489d
 # ╟─3a59ce3a-f738-49f7-9f7b-0917f375aadd
-# ╠═2d1941a3-c6f9-49fd-98b9-a661aa553133
 # ╠═f1bfd76f-53a9-47ab-a825-aac632399d91
 # ╟─54200adc-7658-47b2-9e49-3e49175f4bfa
 # ╟─8f70f274-bfde-432c-aa9d-9c683ae2a7ab
