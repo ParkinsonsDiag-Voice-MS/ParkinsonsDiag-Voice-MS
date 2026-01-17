@@ -105,10 +105,10 @@ Parkinson diagnosis using voice signal analysis
 md"""
 **Group Members:**
 
-- Dom Di Stella, 7868068
-- Paul Clarke, 3492696
-- Rolando Velasco Castedo, 1810805
-- Dana Briscoe, 9789274
+- Dom Di Stella
+- Paul Clarke
+- Rolando Velasco Castedo
+- Dana Briscoe
 """
 
 # ╔═╡ 0902b80a-ee5d-460f-b040-ad36e0a7ccce
@@ -333,7 +333,7 @@ const TunedEvaluationResult = NamedTuple{
     (:mcc, :f1, :sen, :spec, :bacc, :acc, :y_true, :y_pred, :y_prob, :best_model),
     Tuple{Float64, Float64, Float64, Float64, Float64, Float64, 
           Vector{Int}, Vector{Int}, Vector{Float64}, Any}}
-end
+end;
 
 # ╔═╡ 7bee437d-126f-4c6d-b10d-c5d24aba704f
 md"""
@@ -357,29 +357,54 @@ md"""
 	* Nr of Inner Folds: 3
 	* Top Features Candidates: 100
 	* Grid Resolution: 7 (grid search 7x7)
-	* Nr Models for AdaBoost: 50
+	* Nr Models for AdaBoost: 30
 	* SHAP sample size: 60
 
 	This may take up to 5 hours.
 """
 
-# ╔═╡ 2d1941a3-c6f9-49fd-98b9-a661aa553133
+# ╔═╡ f1bfd76f-53a9-47ab-a825-aac632399d91
 md"""
-Generate files: $(@bind files CheckBox())
+## Configuration Panel
 
-Nr of Outer Folds: $(@bind N_o_fold Select([3, 5], default=3))
+**Generate files:** $(@bind files_temp CheckBox())
 
-Nr of Inner Folds: $(@bind N_i_fold Select([2, 3], default=2))
+**Nr of Outer Folds:** $(@bind N_o_fold_temp Select([3, 5], default=3))
 
-#Top Features Candidates: $(@bind tpf_can Select([10, 20, 30, 40, 50, 60, 70, 80, 90, 100], default=10))
+**Nr of Inner Folds:** $(@bind N_i_fold_temp Select([2, 3], default=2))
 
-Grid Resolution: $(@bind g_reso Select([2, 3 , 4 ,5 ,6 ,7], default=2))
+**Grid Resolution:** $(@bind g_reso_temp Select([2, 3, 4, 5, 6, 7], default=2))
 
-Nr Models for AdaBoost: $(@bind s_reso Select([5, 10, 20, 30, 40, 50], default=5))
+**Top Features Candidates:** $(@bind tpf_can_temp Select([10, 20, 30, 40, 50, 60, 70, 80, 90, 100], default=10))
 
-SHAP Sample Size: $(@bind samp_sz Select([10, 30, 60], default=10))
+**Nr Models for AdaBoost:** $(@bind s_reso_temp Select([5, 10, 20, 30], default=5))
 
+SHAP Sample Size: $(@bind samp_sz_temp Select([10, 30, 60], default=10))
+---
+$(@bind apply_config Button("▶ Apply Configuration"))
 """
+
+# ╔═╡ 54200adc-7658-47b2-9e49-3e49175f4bfa
+const config_snapshot = Ref{Any}(nothing);
+
+# ╔═╡ 8f70f274-bfde-432c-aa9d-9c683ae2a7ab
+begin
+    apply_config  # ONLY dependency
+    
+    # Update snapshot - Pluto doesn't track into Refs
+    config_snapshot[] = (
+        files_temp,
+        N_o_fold_temp,
+        N_i_fold_temp,
+        tpf_can_temp,
+        g_reso_temp,
+        s_reso_temp,
+        samp_sz_temp,
+        time()  # timestamp to force update
+    )
+    
+    nothing
+end;
 
 # ╔═╡ 7cdc1aff-50aa-47bc-bc44-5bb23e42c929
 begin
@@ -405,7 +430,7 @@ begin
     # Cross-validation structure
     n_outer_folds = N_o_fold       # Number of outer folds (suggest 5)
     n_inner_folds = N_i_fold      # Number of inner folds (suggest 3)    
-    top_n_feats_candidates = collect(10:10:tpf_can)
+    top_n_feats_candidates = tpf_can
     n_features_max = maximum(top_n_feats_candidates)
     consensus_threshold = 1        # Features must appear in ≥1 of 3 inner folds
     
@@ -803,11 +828,55 @@ begin
 	end
 end
 
-# ╔═╡ dc252f0f-4043-442a-9c5b-b631b3ce39e3
-keys(all_results_adasyn)
+# ╔═╡ 2d1941a3-c6f9-49fd-98b9-a661aa553133
+# ╠═╡ disabled = true
+#=╠═╡
+md"""
+Generate files: $(@bind files CheckBox())
 
-# ╔═╡ 3e168e45-8bd6-474b-8e57-f004c973b6a1
-keys(all_datasets_shap_adasyn)
+Nr of Outer Folds: $(@bind N_o_fold Select([3, 5], default=3))
+
+Nr of Inner Folds: $(@bind N_i_fold Select([2, 3], default=2))
+
+#Top Features Candidates: $(@bind tpf_can Select([10, 20, 30, 40, 50, 60, 70, 80, 90, 100], default=10))
+
+Grid Resolution: $(@bind g_reso Select([2, 3 , 4 ,5 ,6 ,7], default=2))
+
+Nr Models for AdaBoost: $(@bind s_reso Select([5, 10, 20, 30, 40, 50], default=5))
+
+SHAP Sample Size: $(@bind samp_sz Select([10, 30, 60], default=10))
+
+"""
+  ╠═╡ =#
+
+# ╔═╡ ebf531d3-8405-4b62-b4bc-98ed91e2e042
+begin
+   
+    apply_config  # ADD THIS - makes cell re-run on button click
+    
+    if config_snapshot[] !== nothing
+        global files = config_snapshot[][1]
+        global N_o_fold = config_snapshot[][2]
+        global N_i_fold = config_snapshot[][3]
+        global tpf_can = collect(10:10:config_snapshot[][4])
+        global g_reso = config_snapshot[][5]
+        global s_reso = config_snapshot[][6]
+        global samp_sz = config_snapshot[][7]
+        
+        Markdown.parse("""
+        !!! success "Applied Settings"
+            - **Generate Files:** $(files ? "✓ Yes" : "✗ No")
+            - **Outer Folds:** $(N_o_fold)
+            - **Inner Folds:** $(N_i_fold)  
+            - **Top Features:** $(tpf_can))
+            - **Grid Resolution:** $(g_reso)
+            - **AdaBoost Models:** $(s_reso)
+            - **SHAP Sample Size:** $(samp_sz)
+        """)
+    else
+        md"*Click Apply to set configuration*"
+    end
+end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -3458,7 +3527,7 @@ version = "1.9.2+0"
 # ╟─73d7b22a-b47a-4956-8b86-d89cc93b47b8
 # ╟─0902b80a-ee5d-460f-b040-ad36e0a7ccce
 # ╟─362166f9-6bb2-401e-8b23-e5d2d4fc6f74
-# ╠═f63a9541-70f4-4814-9170-8927e0fb77db
+# ╟─f63a9541-70f4-4814-9170-8927e0fb77db
 # ╠═bdac137e-4559-4e9a-a647-4f89cb5ff886
 # ╟─3ea2963f-1423-42e9-88a5-656e7babac01
 # ╠═19121c58-97c9-45e7-9daf-c6cc9379c729
@@ -3468,25 +3537,27 @@ version = "1.9.2+0"
 # ╟─038e29e6-3492-4d34-b9ea-490807d68298
 # ╠═c1d159c9-4229-40bc-8c33-8e972b54ca38
 # ╠═20700a42-7a94-472d-9ae1-26b414eff764
-# ╠═71a77846-41da-4f29-9e1b-282dba9c8701
-# ╠═b808599b-5933-4478-a97f-8c0cde62cf69
+# ╟─71a77846-41da-4f29-9e1b-282dba9c8701
+# ╟─b808599b-5933-4478-a97f-8c0cde62cf69
 # ╠═597de6dd-a4de-4075-97e5-9e5ba8bcccff
 # ╠═fa6317b7-8a67-4a82-a744-021c16344030
 # ╟─7bee437d-126f-4c6d-b10d-c5d24aba704f
 # ╟─f1eeb5bf-36db-4a4f-8710-b7145ca9489d
-# ╠═3a59ce3a-f738-49f7-9f7b-0917f375aadd
-# ╟─2d1941a3-c6f9-49fd-98b9-a661aa553133
-# ╟─7cdc1aff-50aa-47bc-bc44-5bb23e42c929
+# ╟─3a59ce3a-f738-49f7-9f7b-0917f375aadd
+# ╠═2d1941a3-c6f9-49fd-98b9-a661aa553133
+# ╠═f1bfd76f-53a9-47ab-a825-aac632399d91
+# ╟─54200adc-7658-47b2-9e49-3e49175f4bfa
+# ╟─8f70f274-bfde-432c-aa9d-9c683ae2a7ab
+# ╟─ebf531d3-8405-4b62-b4bc-98ed91e2e042
+# ╠═7cdc1aff-50aa-47bc-bc44-5bb23e42c929
 # ╟─1064fe4e-8c6e-4b74-b979-43a08f34b361
-# ╟─5a24c5a7-9e56-4a0b-a57b-628e45adc207
-# ╟─92c1eb07-b9cc-4a44-aede-6b9b1c40fb8e
+# ╠═5a24c5a7-9e56-4a0b-a57b-628e45adc207
+# ╠═92c1eb07-b9cc-4a44-aede-6b9b1c40fb8e
 # ╟─24f1877f-c33f-402a-93f5-ec407056fd52
-# ╠═bd3a217e-e7e6-4ee8-a80f-eb325504bf39
+# ╟─bd3a217e-e7e6-4ee8-a80f-eb325504bf39
 # ╠═42b7421b-52e9-476a-8549-2e2c05b5cafc
 # ╠═43395906-5291-4547-b2ab-242570c178d1
 # ╠═f96479de-077b-47e7-936f-85570992f4d6
 # ╠═7554749c-9295-4f52-9b98-8e4cf4dedd86
-# ╠═dc252f0f-4043-442a-9c5b-b631b3ce39e3
-# ╠═3e168e45-8bd6-474b-8e57-f004c973b6a1
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
