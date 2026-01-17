@@ -111,7 +111,8 @@ All package dependencies are loaded directly inside the Pluto notebooks.
 
 4. Download and copy all the files of the repository in the same folder structure to your Julia working directory
 
-5. Run the Model training notebook: 
+5. Run the Model training notebook:
+   
 	a. From Pluto open  the Model training notebook (primary):
  
 	..\01.Production code and results\PD_Training_2LyCV_SHAP_Grid_MultiSt_ClassImb_v7.jl
