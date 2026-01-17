@@ -77,38 +77,37 @@ Performance metrics include:
 - ROC-AUC
 ---
 
-# Requirements
+## Requirements
 
 Julia ≥ 1.9
 
 Pluto.jl
 
-Key Julia packages:
-
-MLJ, MLJFlux, LIBSVM, DecisionTree
-
-Flux, ShapML
-
-CSV, DataFrames, StatsBase
-
-ROCAnalysis, Imbalance
-
-Plots, StatsPlots
+Key Julia packages include:
+- MLJ, MLJFlux, LIBSVM, DecisionTree
+- Flux, ShapML
+- CSV, DataFrames, StatsBase
+- ROCAnalysis, Imbalance
+- Plots, StatsPlots
 
 All package dependencies are loaded directly inside the Pluto notebooks.
 
-# How to Run
+## How to Run
 
 1. Install Julia ,follow  instructions at https://julialang.org/downloads/
 
 2. run Julia and Install Pluto: 
 
-	using Pkg
-	Pkg.add("Pluto")
+	```julia
+		using Pkg
+		Pkg.add("Pluto")
+	```
 
 3. Launch Pluto
 	
+	```Julia
 	using Pluto; Pluto.run()
+	```
 
 4. Download and copy all the files of the repository in the same folder structure to your Julia working directory
 
@@ -119,22 +118,22 @@ All package dependencies are loaded directly inside the Pluto notebooks.
 	b. run the notebook so all dependencies are loaded and installed, the notebook will start with 'quick start' parameters for a fast 
 	   1st run 
 	c. change the configuration paramters to the recommended settings to match the paper results:
-		* Nr of Outer Folds: 5
-		* Nr of Inner Folds: 3
-		* Top Features Candidates: 100
-		* Grid Resolution: 7 (grid search 7x7)
-		* Nr Models for AdaBoost: 30
+		- Nr of Outer Folds: 5
+		-  Nr of Inner Folds: 3
+		-  Top Features Candidates: 100
+		-  Grid Resolution: 7 (grid search 7x7)
+		-  Nr Models for AdaBoost: 30
 	This files will be generated and must be copied to the visualization folder:
-		* results_ADASYN_yyyymmdd_HHMMSS.jdl
-		* subject_predictions_detailed.csv
-		* subject_level_data_yyyymmdd_HHMMSS
-		* results_baseline_(ADASYN)_yyyymmdd_HHMMSS.csv
-		* results_baseline_female_(ADASYN)_yyyymmdd_HHMMSS.csv
-		* results_baseline_male_(ADASYN)_yyyymmdd_HHMMSS.csv
-		* results_female_(ADASYN)_yyyymmdd_HHMMSS.csv
-		* results_male_(ADASYN)_yyyymmdd_HHMMSS.csv
-		* results_sex aware_(ADASYN)_yyyymmdd_HHMMSS.csv
-		* shap_baseline_sex_stratified_ADASYN_yyyymmdd_HHMMSS.csv
+		-  results_ADASYN_yyyymmdd_HHMMSS.jdl
+		-  subject_predictions_detailed.csv
+		-  subject_level_data_yyyymmdd_HHMMSS
+		-  results_baseline_(ADASYN)_yyyymmdd_HHMMSS.csv
+		-  results_baseline_female_(ADASYN)_yyyymmdd_HHMMSS.csv
+		-  results_baseline_male_(ADASYN)_yyyymmdd_HHMMSS.csv
+		-  results_female_(ADASYN)_yyyymmdd_HHMMSS.csv
+		-  results_male_(ADASYN)_yyyymmdd_HHMMSS.csv
+		-  results_sex aware_(ADASYN)_yyyymmdd_HHMMSS.csv
+		-  shap_baseline_sex_stratified_ADASYN_yyyymmdd_HHMMSS.csv
 6. Run the visualization notebook:
 	..\02.Visualization code\PD_Visuals_ADSYN_models_v5.jl
 
@@ -149,12 +148,12 @@ Feature selection, resampling, and tuning are fully nested.
 
 No test data are used during feature selection or oversampling.
 
-#  Disclaimer
+##  Disclaimer
 
 This code is intended for research purposes only.
 It is not a clinical diagnostic tool and should not be used for medical decision-making.
 
-#  Citation
+##  Citation
 
 If you use or adapt this code, please cite the associated publication: To be added upon approval
 
