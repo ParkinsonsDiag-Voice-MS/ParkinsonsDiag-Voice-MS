@@ -114,9 +114,11 @@ All package dependencies are loaded directly inside the Pluto notebooks.
 5. Run the Model training notebook:
    
 	a. From Pluto open  the Model training notebook (primary):
- 
-	..\01.Production code and results\PD_Training_2LyCV_SHAP_Grid_MultiSt_ClassImb_v7.jl
 
+	```julia
+	..\01.Production code and results\PD_Training_2LyCV_SHAP_Grid_MultiSt_ClassImb_v7.jl
+	```
+  
 	b. run the notebook so all dependencies are loaded and installed, the notebook will start with 'quick start' parameters for a fast 
 	   1st run
    
@@ -141,9 +143,10 @@ All package dependencies are loaded directly inside the Pluto notebooks.
 		-  results_sex aware_(ADASYN)_yyyymmdd_HHMMSS.csv
 		-  shap_baseline_sex_stratified_ADASYN_yyyymmdd_HHMMSS.csv
 
-6. Run the visualization notebook:
+7. Run the visualization notebook:
+	```julia
 	..\02.Visualization code\PD_Visuals_ADSYN_models_v5.jl
-
+	```
 	
 ##  Reproducibility Notes
 
