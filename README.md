@@ -112,19 +112,24 @@ All package dependencies are loaded directly inside the Pluto notebooks.
 4. Download and copy all the files of the repository in the same folder structure to your Julia working directory
 
 5. Run the Model training notebook: 
-	a. From Pluto open  the Model training notebook (primary): 
+	a. From Pluto open  the Model training notebook (primary):
+ 
 	..\01.Production code and results\PD_Training_2LyCV_SHAP_Grid_MultiSt_ClassImb_v7.jl
 
 	b. run the notebook so all dependencies are loaded and installed, the notebook will start with 'quick start' parameters for a fast 
-	   1st run 
+	   1st run
+   
 	c. change the configuration paramters to the recommended settings to match the paper results:
+
 		- Nr of Outer Folds: 5
 		-  Nr of Inner Folds: 3
 		-  Top Features Candidates: 100
 		-  Grid Resolution: 7 (grid search 7x7)
 		-  Nr Models for AdaBoost: 30
+	
 	This files will be generated and must be copied to the visualization folder:
-		-  results_ADASYN_yyyymmdd_HHMMSS.jdl
+
+   		-  results_ADASYN_yyyymmdd_HHMMSS.jdl
 		-  subject_predictions_detailed.csv
 		-  subject_level_data_yyyymmdd_HHMMSS
 		-  results_baseline_(ADASYN)_yyyymmdd_HHMMSS.csv
@@ -134,6 +139,7 @@ All package dependencies are loaded directly inside the Pluto notebooks.
 		-  results_male_(ADASYN)_yyyymmdd_HHMMSS.csv
 		-  results_sex aware_(ADASYN)_yyyymmdd_HHMMSS.csv
 		-  shap_baseline_sex_stratified_ADASYN_yyyymmdd_HHMMSS.csv
+
 6. Run the visualization notebook:
 	..\02.Visualization code\PD_Visuals_ADSYN_models_v5.jl
 
