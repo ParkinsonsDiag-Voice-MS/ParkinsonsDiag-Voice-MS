@@ -148,6 +148,11 @@ All package dependencies are loaded directly inside the Pluto notebooks.
 	```julia
 	..\02.Visualization code\PD_Visuals_ADSYN_models_v5.jl
 	```
+## Dataset
+
+https://www.kaggle.com/datasets/porinitahoque/parkinsons-disease-pd-data-analysis/data
+
+Sakar, C.O., Serbes, G., Gunduz, A., Tunc, H.C., Nizam, H., Sakar, B.E., Tutuncu, M., Aydin, T., Isenkul, M.E. and Apaydin, H., 2018. A comparative analysis of speech signal processing algorithms for Parkinson's disease classification and the use of the tunable Q-factor wavelet transform. Applied Soft Computing, DOI: [Web Link] https://doi.org/10.1016/j.asoc.2018.10.022
 	
 ##  Reproducibility Notes
 
