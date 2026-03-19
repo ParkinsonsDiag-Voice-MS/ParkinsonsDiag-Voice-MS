@@ -189,9 +189,3 @@ No test data are used during feature selection or oversampling.
 
 This code is intended for research purposes only.
 It is not a clinical diagnostic tool and should not be used for medical decision-making.
-
-##  Citation
-
-If you use or adapt this code, please cite the associated publication: To be added upon approval
-
-
