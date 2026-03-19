@@ -1,6 +1,27 @@
-# Toward Reliable Voice-Based Parkinson’s Disease Diagnosis: Sex-Specific Models  with Nested Subject-Level Validation
+# Interpretable Voice-Based Parkinson's Detection: Sex-Specific Acoustic Biomarkers with Subject-Level Nested Cross-Validation
 
-This repository contains the source code and analysis pipeline for a research project investigating **Toward Reliable Voice-Based Parkinson’s Disease Diagnosis: Sex-Specific Models  with Nested Subject-Level Validation**. 
+This repository accompanies the following publication:
+
+> Briscoe, D. K., Castedo, R. V., Clarke, P., Di Stella, D., & Deng, J. (2025).
+> "Interpretable Voice-Based Parkinson's Detection: Sex-Specific Acoustic Biomarkers
+> with Subject-Level Nested Cross-Validation."
+> Available at SSRN: https://ssrn.com/abstract=6430163
+
+[![DOI](https://img.shields.io/badge/DOI-10.2139%2Fssrn.6430163-blue)](http://dx.doi.org/10.2139/ssrn.6430163)
+
+## Citation
+```bibtex
+@article{briscoe2025parkinson,
+  author    = {Briscoe, Dana K. and Castedo, Rolando Velasco and Clarke, Paul
+               and {Di Stella}, Domenic and Deng, Jeremiah},
+  title     = {Interpretable Voice-Based {Parkinson's} Detection: Sex-Specific
+               Acoustic Biomarkers with Subject-Level Nested Cross-Validation},
+  journal   = {SSRN},
+  year      = {2025},
+  doi       = {10.2139/ssrn.6430163},
+  url       = {https://ssrn.com/abstract=6430163}
+}
+```
 
 The project is implemented in **Julia** and organised around **Pluto.jl notebooks**, enabling fully reproducible results.
 
