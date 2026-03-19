@@ -1,6 +1,10 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
 cff-version: 1.2.0
-message: "If you use this code, please cite the associated paper."
-title: "Interpretable Voice-Based Parkinson's Detection: Sex-Specific Acoustic Biomarkers with Subject-Level Nested Cross-Validation"
+title: ParkinsonsDiag-Voice-MS
+message: 'If you use this code, please cite the associated paper.'
+type: software
 authors:
   - family-names: Briscoe
     given-names: Dana K.
@@ -12,6 +16,40 @@ authors:
     given-names: Domenic
   - family-names: Deng
     given-names: Jeremiah
-doi: 10.2139/ssrn.6430163
-url: "https://ssrn.com/abstract=6430163"
-type: article
+identifiers:
+  - type: url
+    value: 'https://ssrn.com/abstract=6430163'
+    description: SSRN
+repository-code: >-
+  https://github.com/ParkinsonsDiag-Voice-MS/ParkinsonsDiag-Voice-MS
+abstract: >-
+  We benchmark machine learning approaches for voice-based
+  Parkinson's
+    disease telediagnosis using recordings from 252 participants (188 PD, 64 controls). Four dataset configurations (sex-agnostic, sex-aware, male-only, female-only) were   evaluated across six classifiers and two feature selection methods under subject-level   nested cross-validation with ADASYN oversampling. Best models achieved MCC up to 0.674, with SHAP analysis revealing sex-dependent vocal biomarkers: MFCC features drove female classification while TQWT and baseline features dominated male classification. Results highlight the importance of sex-specific modeling and class imbalance correction for reliable early PD screening.
+keywords:
+  - Machine Learning
+  - Parkinson’s Disease
+  - telediagnosis
+  - vocal analysis
+  - biomarkers
+  - sex
+preferred-citation:
+  type: article
+  title: >-
+    Interpretable Voice-Based Parkinson's Detection: Sex-Specific Acoustic
+    Biomarkers with Subject-Level Nested Cross-Validation
+  authors:
+    - family-names: Briscoe
+      given-names: Dana K.
+    - family-names: Castedo
+      given-names: Rolando Velasco
+    - family-names: Clarke
+      given-names: Paul
+    - family-names: Di Stella
+      given-names: Domenic
+    - family-names: Deng
+      given-names: Jeremiah
+  url: 'https://ssrn.com/abstract=6430163'
+  identifiers:
+    - type: doi
+      value: 10.2139/ssrn.6430163
