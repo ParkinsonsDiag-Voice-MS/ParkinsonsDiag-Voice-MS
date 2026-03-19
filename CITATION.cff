@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+cff-version: 1.2.0
+message: "If you use this code, please cite the associated paper."
+title: "Interpretable Voice-Based Parkinson's Detection: Sex-Specific Acoustic Biomarkers with Subject-Level Nested Cross-Validation"
+authors:
+  - family-names: Briscoe
+    given-names: Dana K.
+  - family-names: Castedo
+    given-names: Rolando Velasco
+  - family-names: Clarke
+    given-names: Paul
+  - family-names: Di Stella
+    given-names: Domenic
+  - family-names: Deng
+    given-names: Jeremiah
+doi: 10.2139/ssrn.6430163
+url: "https://ssrn.com/abstract=6430163"
+type: article
