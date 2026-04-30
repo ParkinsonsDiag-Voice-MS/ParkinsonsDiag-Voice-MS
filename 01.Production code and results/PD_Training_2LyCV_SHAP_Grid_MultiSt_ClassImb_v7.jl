@@ -71,6 +71,10 @@ begin
     using .ADASYN
 end
 
+# ╔═╡ fa6317b7-8a67-4a82-a744-021c16344030
+#save to files
+using JLD2
+
 # ╔═╡ 71a77846-41da-4f29-9e1b-282dba9c8701
 begin
 	using LIBSVM
@@ -78,13 +82,9 @@ begin
     SVM = @load ProbabilisticSVC pkg=LIBSVM verbosity=0
 end
 
-# ╔═╡ fa6317b7-8a67-4a82-a744-021c16344030
-#save to files
-using JLD2
-
 # ╔═╡ 597de6dd-a4de-4075-97e5-9e5ba8bcccff
   # call functions file
-    include("../01.Production code and results/functions_opt_grid_v9.jl")
+include("../01.Production code and results/functions_opt_grid_v9.jl")
 
 # ╔═╡ 1fe12cff-b2c9-4b7a-865e-86ec097d4ac7
 # ╠═╡ disabled = true
@@ -301,10 +301,11 @@ nn_builder = (n_features, lr=0.0005) -> begin  #reduced from 0.001
             Dropout(0.3),
             Dense(32, 16, relu),
             Dropout(0.3),
+			
             Dense(16, 2)
         )
     end
-    
+
     NNModel(
         builder=builder,
         epochs=150,                    
@@ -635,6 +636,40 @@ begin
 	methods = ["mRMR", "Boruta"]
 end;
 
+# ╔═╡ a1b2c3d4-e5f6-7890-abcd-ef1234567890
+md"""
+### Inner Fold Metric Extraction (Second Pass)
+
+Post-hoc extraction of per-inner-fold train/val metrics reusing saved feature
+selections and best hyperparameters. Outer test metrics are appended for
+direct comparison. No feature selection or grid search is repeated.
+"""
+
+# ╔═╡ b2c3d4e5-f6a7-8901-bcde-f12345678901
+inner_extract_snapshot = Ref{Any}(nothing)
+
+# ╔═╡ c3d4e5f6-a7b8-9012-cdef-123456789012
+md"""
+**Extract inner fold metrics:**
+$(@bind run_inner_extract Button("▶ Extract Inner Fold Metrics"))
+
+**Datasets to process:**
+$(@bind inner_datasets_temp MultiSelect(
+	["baseline", "sex aware", "male", "female"],
+	default=["baseline", "sex aware", "male", "female"]
+))
+
+**Skip if already computed:**
+$(@bind skip_if_exists_temp CheckBox(default=true))
+"""
+
+# ╔═╡ d4e5f6a7-b8c9-0123-defa-234567890123
+begin
+	run_inner_extract
+	inner_extract_snapshot[] = (inner_datasets_temp, skip_if_exists_temp, time())
+	nothing
+end
+
 # ╔═╡ 24f1877f-c33f-402a-93f5-ec407056fd52
 md"""
 ### SHAP value feature importance
@@ -824,8 +859,29 @@ begin
     	export_all_results_to_csv(all_results_adasyn, top_n_feats_candidates,
 								  "ADASYN")
     
+    	# Extract NN training losses into a separate dict for easy access
+		nn_training_losses = Dict()
+		for (ds, ds_results) in all_results_adasyn
+			nn_training_losses[ds] = Dict()
+			for (fold_idx, fold_res) in ds_results
+				nn_training_losses[ds][fold_idx] = Dict()
+				for method in ["mRMR", "Boruta"]
+					!haskey(fold_res, method) && continue
+					nn_training_losses[ds][fold_idx][method] = Dict()
+					for (feat_key, feat_res) in fold_res[method]
+						startswith(string(feat_key), "selected_features") && continue
+						d = Dict{String,Any}()
+						haskey(feat_res, "NeuralNetwork_losses")       && (d["NeuralNetwork_losses"]       = feat_res["NeuralNetwork_losses"])
+						haskey(feat_res, "NeuralNetwork_TUNED_losses") && (d["NeuralNetwork_TUNED_losses"] = feat_res["NeuralNetwork_TUNED_losses"])
+						nn_training_losses[ds][fold_idx][method][feat_key] = d
+					end
+				end
+			end
+		end
+
     	# Save to JLD2
-    	@save "results_ADASYN_$(Dates.format(now(), "yyyymmdd_HHMMSS")).jld2" all_results_adasyn Xb Xs Xm Xf yb ym yf subjects_b subjects_m subjects_f feature_names_b feature_names_s feature_names_m feature_names_f sex_vector_b top_n_feats_candidates n_outer_folds n_inner_folds n_features_max consensus_threshold random_seed all_datasets_shap_adasyn subject_level_db
+    	results_filename = "results_ADASYN_$(Dates.format(now(), "yyyymmdd_HHMMSS")).jld2"
+    	@save results_filename all_results_adasyn Xb Xs Xm Xf yb ym yf subjects_b subjects_m subjects_f feature_names_b feature_names_s feature_names_m feature_names_f sex_vector_b top_n_feats_candidates n_outer_folds n_inner_folds n_features_max consensus_threshold random_seed all_datasets_shap_adasyn subject_level_db nn_training_losses
     
     	println("✓ ADASYN results exported")
 
@@ -854,6 +910,68 @@ begin
     	println("Check 'Generate files' to create CSV exports")
 	
 	
+	end
+end
+
+# ╔═╡ e5f6a7b8-c9d0-1234-efab-345678901234
+begin
+	run_inner_extract
+
+	if inner_extract_snapshot[] !== nothing
+		_selected_ds = inner_extract_snapshot[][1]
+		_skip_flag   = inner_extract_snapshot[][2]
+
+		# Skip check: look for the key in the most recently saved JLD2
+		_already_done = false
+		if _skip_flag && @isdefined(results_filename) && isfile(results_filename)
+			_jld2_keys = JLD2.jldopen(results_filename, "r") do f; keys(f); end
+			_already_done = "inner_fold_metrics_adasyn" in _jld2_keys
+		end
+
+		if _already_done
+			println("Skipping: inner_fold_metrics_adasyn already exists in $(results_filename)")
+		else
+			# Build dataset map restricted to selected datasets
+			_inner_ds_map = Dict(
+				k => (v[1], v[2], subjects_map[k])
+				for (k, v) in dataset_map_core if k in _selected_ds
+			)
+
+			inner_fold_df = extract_inner_fold_metrics(
+				all_results_adasyn,
+				_inner_ds_map,
+				top_n_feats_candidates,
+				n_outer_folds,
+				n_inner_folds,
+				random_seed
+			)
+
+			# Append to JLD2
+			if @isdefined(results_filename) && isfile(results_filename)
+				JLD2.jldopen(results_filename, "a+") do f
+					f["inner_fold_metrics_adasyn"] = inner_fold_df
+				end
+				println("✓ Appended inner_fold_metrics_adasyn to $(results_filename)")
+			end
+
+			# Export CSV
+			_csv_fname = "inner_fold_metrics_ADASYN_$(Dates.format(now(), "yyyymmdd_HHMMSS")).csv"
+			CSV.write(_csv_fname, inner_fold_df)
+			println("✓ Saved $(nrow(inner_fold_df)) rows → $(_csv_fname)")
+		end
+	else
+		md"*Click ▶ Extract Inner Fold Metrics to run*"
+	end
+end
+
+# ╔═╡ f6a7b8c9-d0e1-2345-fabc-456789012345
+begin
+	run_inner_extract  # gate on same button
+
+	if @isdefined(inner_fold_df) && nrow(inner_fold_df) > 0
+		generate_supplemental_table(inner_fold_df, "ADASYN")
+	else
+		md"*Run inner fold extraction first*"
 	end
 end
 
@@ -3507,14 +3625,14 @@ version = "1.9.2+0"
 # ╟─0902b80a-ee5d-460f-b040-ad36e0a7ccce
 # ╟─362166f9-6bb2-401e-8b23-e5d2d4fc6f74
 # ╟─f63a9541-70f4-4814-9170-8927e0fb77db
-# ╠═bdac137e-4559-4e9a-a647-4f89cb5ff886
+# ╟─bdac137e-4559-4e9a-a647-4f89cb5ff886
 # ╟─3ea2963f-1423-42e9-88a5-656e7babac01
-# ╠═19121c58-97c9-45e7-9daf-c6cc9379c729
-# ╠═57ddb627-afc3-4342-b52c-79f2352d56c7
-# ╠═17feab6d-d88b-4ada-a12b-b38cb44f0f9f
-# ╠═88631593-ccbc-4c32-bc17-61f7ca63768f
+# ╟─19121c58-97c9-45e7-9daf-c6cc9379c729
+# ╟─57ddb627-afc3-4342-b52c-79f2352d56c7
+# ╟─17feab6d-d88b-4ada-a12b-b38cb44f0f9f
+# ╟─88631593-ccbc-4c32-bc17-61f7ca63768f
 # ╟─038e29e6-3492-4d34-b9ea-490807d68298
-# ╠═c1d159c9-4229-40bc-8c33-8e972b54ca38
+# ╟─c1d159c9-4229-40bc-8c33-8e972b54ca38
 # ╠═20700a42-7a94-472d-9ae1-26b414eff764
 # ╟─71a77846-41da-4f29-9e1b-282dba9c8701
 # ╟─b808599b-5933-4478-a97f-8c0cde62cf69
@@ -3529,8 +3647,14 @@ version = "1.9.2+0"
 # ╟─ebf531d3-8405-4b62-b4bc-98ed91e2e042
 # ╠═7cdc1aff-50aa-47bc-bc44-5bb23e42c929
 # ╟─1064fe4e-8c6e-4b74-b979-43a08f34b361
-# ╠═5a24c5a7-9e56-4a0b-a57b-628e45adc207
-# ╠═92c1eb07-b9cc-4a44-aede-6b9b1c40fb8e
+# ╟─5a24c5a7-9e56-4a0b-a57b-628e45adc207
+# ╟─92c1eb07-b9cc-4a44-aede-6b9b1c40fb8e
+# ╟─a1b2c3d4-e5f6-7890-abcd-ef1234567890
+# ╠═b2c3d4e5-f6a7-8901-bcde-f12345678901
+# ╟─c3d4e5f6-a7b8-9012-cdef-123456789012
+# ╟─d4e5f6a7-b8c9-0123-defa-234567890123
+# ╠═e5f6a7b8-c9d0-1234-efab-345678901234
+# ╠═f6a7b8c9-d0e1-2345-fabc-456789012345
 # ╟─24f1877f-c33f-402a-93f5-ec407056fd52
 # ╟─bd3a217e-e7e6-4ee8-a80f-eb325504bf39
 # ╠═42b7421b-52e9-476a-8549-2e2c05b5cafc

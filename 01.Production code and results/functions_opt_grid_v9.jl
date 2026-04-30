@@ -15,6 +15,7 @@ const TunedEvaluationResult = NamedTuple{
     Tuple{Float64, Float64, Float64, Float64, Float64, Float64, 
           Vector{Int}, Vector{Int}, Vector{Float64}, Any}}
 =#
+
 # ============================================================================
 # UTILITY FUNCTIONS
 # ============================================================================
@@ -1388,13 +1389,14 @@ function process_outer_fold(
                     rng_seed=fold_seed,
                 )
             
-            fold_results[method_name][feature_count]["NeuralNetwork"] = 
-                evaluate_neural_network(
+            nn_result, nn_losses = evaluate_neural_network(
                     X_outer_train_sel, y_outer_train,
                     X_outer_test_sel, y_outer_test, subjects_outer_test;
                     train_subjects=subjects_outer_train,
                     rng_seed=fold_seed,
                 )
+            fold_results[method_name][feature_count]["NeuralNetwork"] = nn_result
+            fold_results[method_name][feature_count]["NeuralNetwork_losses"] = nn_losses
             
             fold_results[method_name][feature_count]["NaiveBayes"] = 
                 evaluate_naive_bayes(
@@ -1453,13 +1455,14 @@ function process_outer_fold(
                     rng_seed=fold_seed, reso = resol1
                 )
             
-            fold_results[method_name][feature_count]["NeuralNetwork_TUNED"] = 
-                evaluate_neural_network_tuned(
+            nn_tuned_result, nn_tuned_losses = evaluate_neural_network_tuned(
                     X_outer_train_sel, y_outer_train,
                     X_outer_test_sel, y_outer_test, subjects_outer_test;
                     train_subjects=subjects_outer_train,
                     rng_seed=fold_seed, reso = resol
                 )
+            fold_results[method_name][feature_count]["NeuralNetwork_TUNED"] = nn_tuned_result
+            fold_results[method_name][feature_count]["NeuralNetwork_TUNED_losses"] = nn_tuned_losses
             
             if verbose
                 println("Completed: $method_name | Outer Fold $outer_fold_idx | $feature_count")
@@ -1636,7 +1639,7 @@ end
 function evaluate_neural_network( X_train::AbstractMatrix{<:Real}, y_train::Vector{Int},
     X_test::AbstractMatrix{<:Real}, y_test::Vector{Int},
     test_subjects::Vector{Int}; train_subjects::Vector{Int}=collect(1:length(y_train)),rng_seed::Int=42,
-)::EvaluationResult
+)
     
     # Create RNG
     rng = StableRNG(rng_seed)
@@ -1661,7 +1664,8 @@ function evaluate_neural_network( X_train::AbstractMatrix{<:Real}, y_train::Vect
     model = nn_builder(n_features)
     mach = machine(model, MLJ.table(X_train_S_bal), categorical(y_train_bal))
     MLJ.fit!(mach, verbosity=0)
-    
+    training_losses = report(mach).training_losses
+
     # Predict
     yprob = MLJ.predict(mach, MLJ.table(X_test_S))
     p_pos = [Float64(pdf(s, 1)) for s in yprob]
@@ -1691,10 +1695,11 @@ function evaluate_neural_network( X_train::AbstractMatrix{<:Real}, y_train::Vect
     # Calculate metrics
     mcc, f1, sen, spec, bacc, acc = calc_perf_eval_measures(
         subject_level_true, subject_level_pred)
-    
-    return (mcc=mcc, f1=f1, sen=sen, spec=spec, bacc=bacc, acc=acc,
-            y_true=subject_level_true, y_pred=subject_level_pred,
-            y_prob=subject_level_prob)
+
+    result = (mcc=mcc, f1=f1, sen=sen, spec=spec, bacc=bacc, acc=acc,
+              y_true=subject_level_true, y_pred=subject_level_pred,
+              y_prob=subject_level_prob)
+    return result, training_losses
 end
 
 # ================================================================================
@@ -2472,8 +2477,17 @@ function predict_with_tuned_neural(Xtr::AbstractMatrix, ytr::Vector{Int}, Xte::A
     yprob       = MLJ.predict(mach, MLJ.table(Xte))
     best_model  = fitted_params(mach).best_model
     best_report = report(mach)
-    
-    return yprob, best_model, best_report
+    training_losses = if hasproperty(best_report, :model_report) && !isnothing(best_report.model_report)
+        best_report.model_report.training_losses
+    else
+        # MLJTuning version doesn't expose the best model's sub-report;
+        # refit the best model on all training data to capture losses
+        bm_mach = machine(best_model, MLJ.table(Xtr), ytr_cat)
+        MLJ.fit!(bm_mach, verbosity=0)
+        report(bm_mach).training_losses
+    end
+
+    return yprob, best_model, best_report, training_losses
 end
 
 # ================================================================================
@@ -2482,7 +2496,7 @@ end
 # ================================================================================
 function evaluate_neural_network_tuned( X_train::AbstractMatrix{<:Real}, y_train::Vector{Int},
     X_test::AbstractMatrix{<:Real},  y_test::Vector{Int}, test_subjects::Vector{Int};
-    train_subjects::Vector{Int}, rng_seed::Int = 42, reso::Int =30 )::TunedEvaluationResult
+    train_subjects::Vector{Int}, rng_seed::Int = 42, reso::Int =30 )
     
     # Create RNG
     rng = StableRNG(rng_seed)
@@ -2510,7 +2524,7 @@ function evaluate_neural_network_tuned( X_train::AbstractMatrix{<:Real}, y_train
     train_subjects_bal = collect(1:n_resampled)  # Each row becomes its own "subject"
 	
     # Tune and predict
-    yprob, best_model, best_report = predict_with_tuned_neural(
+    yprob, best_model, best_report, training_losses = predict_with_tuned_neural(
         X_train_S_bal, y_train_bal, X_test_S;
         train_subjects = train_subjects_bal,
         n_inner_folds  = 3,
@@ -2548,11 +2562,12 @@ function evaluate_neural_network_tuned( X_train::AbstractMatrix{<:Real}, y_train
     # Calculate metrics
     mcc, f1, sen, spec, bacc, acc = calc_perf_eval_measures(
         subject_level_true, subject_level_pred)
-    
-    return (mcc=mcc, f1=f1, sen=sen, spec=spec, bacc=bacc, acc=acc,
-            y_true=subject_level_true, y_pred=subject_level_pred,
-            y_prob=subject_level_prob,
-            best_model=best_model)
+
+    result = (mcc=mcc, f1=f1, sen=sen, spec=spec, bacc=bacc, acc=acc,
+              y_true=subject_level_true, y_pred=subject_level_pred,
+              y_prob=subject_level_prob,
+              best_model=best_model)
+    return result, training_losses
 end
 
 # ====================================================================
@@ -3389,6 +3404,496 @@ function export_predictions_detailed(
     println("  Configurations: $(length(unique(predictions_df.Model_Configuration)))")
     println("  Total subjects: $(length(unique(predictions_df.Subject_ID)))")
     println("="^70)
-    
+
     return predictions_df
+end
+
+# ============================================================================
+# INNER-FOLD METRIC EXTRACTION (Post-hoc second pass)
+#
+# Reconstructs the exact inner folds used during training and evaluates every
+# classifier on both the inner validation set and the pre-ADASYN inner training
+# set.  Outer test metrics are appended (Inner_Fold = 0, Split = "test") so
+# that train / val / test curves can be built from a single DataFrame.
+#
+# Selected features and best-model hyperparameters are read from all_results;
+# no feature selection or grid search is repeated.
+#
+# Arguments
+#   all_results           — nested dict from the main CV run
+#   dataset_map           — Dict{String => (X, y, subjects)} for core datasets
+#   top_n_feats_candidates — vector of feature counts (e.g. [10, 20, ...])
+#   n_outer_folds         — number of outer folds
+#   n_inner_folds         — number of inner folds
+#   random_seed           — base random seed (same value used in training)
+#
+# Returns flat DataFrame with columns:
+#   Dataset, Method, N_Features, Classifier, Outer_Fold, Inner_Fold,
+#   Split, MCC, F1, Sensitivity, Specificity, BACC, Accuracy
+# ============================================================================
+function extract_inner_fold_metrics(
+    all_results::Dict,
+    dataset_map::Dict,
+    top_n_feats_candidates::Vector{Int},
+    n_outer_folds::Int,
+    n_inner_folds::Int,
+    random_seed::Int
+)::DataFrame
+
+    # ------------------------------------------------------------------
+    # Helper: subject-level majority-vote metrics
+    # ------------------------------------------------------------------
+    function _subj_metrics(p_pos::Vector{Float64},
+                           eval_subjects::Vector{Int},
+                           y_eval::Vector{Int})
+        subj_preds = Dict{Int, Vector{Int}}()
+        subj_true  = Dict{Int, Int}()
+        yhat = [p >= 0.5 ? 1 : 0 for p in p_pos]
+        @inbounds for (i, subj_id) in enumerate(eval_subjects)
+            push!(get!(()->Int[], subj_preds, subj_id), yhat[i])
+            subj_true[subj_id] = y_eval[i]
+        end
+        unique_subjects    = sort(collect(keys(subj_true)))
+        subject_level_true = [subj_true[s]                        for s in unique_subjects]
+        subject_level_pred = [majority_vote(subj_preds[s])        for s in unique_subjects]
+        return calc_perf_eval_measures(subject_level_true, subject_level_pred)
+    end
+
+    # ------------------------------------------------------------------
+    # Helper: Gaussian Naive Bayes predict (returns row-level p_pos)
+    # ------------------------------------------------------------------
+    function _nb_predict(X_pred::AbstractMatrix,
+                         means::Dict, stds::Dict,
+                         class_priors::Dict, classes::Vector)
+        n_pred    = size(X_pred, 1)
+        n_feats   = size(X_pred, 2)
+        n_classes = length(classes)
+        probs_matrix = zeros(Float64, n_classes, n_pred)
+        @inbounds for i in 1:n_pred
+            x = X_pred[i, :]
+            for (j, c) in enumerate(classes)
+                lp = log(class_priors[c])
+                for f in 1:n_feats
+                    μ = means[c][f]; σ = stds[c][f]
+                    lp += -0.5 * log(2π * σ^2) - ((x[f] - μ)^2) / (2 * σ^2)
+                end
+                probs_matrix[j, i] = lp
+            end
+        end
+        @inbounds for i in 1:n_pred
+            max_lp = maximum(probs_matrix[:, i])
+            probs_matrix[:, i] = exp.(probs_matrix[:, i] .- max_lp)
+            probs_matrix[:, i] ./= sum(probs_matrix[:, i])
+        end
+        pos_idx = findfirst(==(1), classes)
+        isnothing(pos_idx) && return fill(0.0, n_pred)
+        return vec(probs_matrix[pos_idx, :])
+    end
+
+    # ------------------------------------------------------------------
+    # Classifier list (must match keys stored by process_outer_fold)
+    # ------------------------------------------------------------------
+    classifiers = [
+        "RandomForest", "NeuralNetwork", "NaiveBayes",
+        "LogisticRegression", "AdaBoost", "SVM_RBF",
+        "RandomForest_TUNED", "AdaBoost_TUNED",
+        "NeuralNetwork_TUNED", "SVM_RBF_TUNED",
+    ]
+
+    # ------------------------------------------------------------------
+    # Output DataFrame
+    # ------------------------------------------------------------------
+    results_df = DataFrame(
+        Dataset     = String[],
+        Method      = String[],
+        N_Features  = Int[],
+        Classifier  = String[],
+        Outer_Fold  = Int[],
+        Inner_Fold  = Int[],
+        Split       = String[],
+        MCC         = Float64[],
+        F1          = Float64[],
+        Sensitivity = Float64[],
+        Specificity = Float64[],
+        BACC        = Float64[],
+        Accuracy    = Float64[],
+    )
+
+    function _push_row!(df, dataset, method, n_feat, clf, o_fold, i_fold, split,
+                        mcc, f1, sen, spec, bacc, acc)
+        push!(df, (dataset, method, n_feat, clf, o_fold, i_fold, split,
+                   mcc, f1, sen, spec, bacc, acc))
+    end
+
+    # ==================================================================
+    # MAIN LOOP
+    # ==================================================================
+    for (dataset_name, (X, y, subjects)) in dataset_map
+
+        !haskey(all_results, dataset_name) && continue
+
+        println("\n" * "="^60)
+        println("extract_inner_fold_metrics: $dataset_name")
+        println("="^60)
+
+        outer_folds = stratified_subject_level_cv(
+            subjects, y, n_outer_folds; random_seed=random_seed)
+
+        for outer_fold_idx in 1:n_outer_folds
+            fold_seed   = random_seed + outer_fold_idx
+            outer_fold  = outer_folds[outer_fold_idx]
+
+            X_outer_train      = X[outer_fold.train, :]
+            y_outer_train      = y[outer_fold.train]
+            subj_outer_train   = subjects[outer_fold.train]
+
+            inner_folds = stratified_subject_level_cv(
+                subj_outer_train, y_outer_train, n_inner_folds;
+                random_seed=fold_seed)
+
+            for method in ["mRMR", "Boruta"]
+                for n_features in top_n_feats_candidates
+                    feature_count    = "$(n_features)_features"
+                    saved_features   = all_results[dataset_name][outer_fold_idx][method]["selected_features_$(n_features)"]
+
+                    # ---- append outer TEST metrics (no recomputation) ----
+                    for clf in classifiers
+                        !haskey(all_results[dataset_name][outer_fold_idx][method][feature_count], clf) && continue
+                        r = all_results[dataset_name][outer_fold_idx][method][feature_count][clf]
+                        _push_row!(results_df, dataset_name, method, n_features, clf,
+                                   outer_fold_idx, 0, "test",
+                                   r.mcc, r.f1, r.sen, r.spec, r.bacc, r.acc)
+                    end
+
+                    # ---- inner fold loop ----
+                    for inner_fold_idx in 1:n_inner_folds
+                        inner_seed  = fold_seed + inner_fold_idx
+                        inner_fold  = inner_folds[inner_fold_idx]
+
+                        # Feature-selected raw slices
+                        X_itr_raw  = X_outer_train[inner_fold.train, saved_features]
+                        y_itr      = y_outer_train[inner_fold.train]
+                        subj_itr   = subj_outer_train[inner_fold.train]
+
+                        X_ival_raw = X_outer_train[inner_fold.test, saved_features]
+                        y_ival     = y_outer_train[inner_fold.test]
+                        subj_ival  = subj_outer_train[inner_fold.test]
+
+                        # Standardize (fit on inner train)
+                        X_itr_S, X_ival_S = standardize_pair(X_itr_raw, X_ival_raw)
+
+                        # ADASYN on standardized inner train
+                        X_bal, y_bal = resample_training_data(
+                            X_itr_S, y_itr; rng_seed=inner_seed)
+
+                        n_feats_sel = size(X_bal, 2)
+
+                        # ---- evaluate each classifier ----
+                        for clf in classifiers
+
+                            # Try/catch so a single failure doesn't abort the loop
+                            try
+
+                            # ---- RandomForest (untuned) ----
+                            if clf == "RandomForest"
+                                rf = MLJDecisionTreeInterface.RandomForestClassifier(
+                                        n_trees=100, rng=inner_seed)
+                                mach = machine(rf, MLJ.table(X_bal), categorical(y_bal))
+                                MLJ.fit!(mach, verbosity=0)
+                                for (Xev, yev, subjev, split) in [
+                                        (X_ival_S, y_ival, subj_ival, "val"),
+                                        (X_itr_S,  y_itr,  subj_itr,  "train")]
+                                    yp  = MLJ.predict(mach, MLJ.table(Xev))
+                                    p   = [Float64(pdf(s, 1)) for s in yp]
+                                    mcc, f1, sen, spec, bacc, acc = _subj_metrics(p, subjev, yev)
+                                    _push_row!(results_df, dataset_name, method, n_features, clf,
+                                               outer_fold_idx, inner_fold_idx, split,
+                                               mcc, f1, sen, spec, bacc, acc)
+                                end
+
+                            # ---- NeuralNetwork (untuned) ----
+                            elseif clf == "NeuralNetwork"
+                                nn = nn_builder(n_feats_sel)
+                                mach = machine(nn, MLJ.table(X_bal), categorical(y_bal))
+                                MLJ.fit!(mach, verbosity=0)
+                                for (Xev, yev, subjev, split) in [
+                                        (X_ival_S, y_ival, subj_ival, "val"),
+                                        (X_itr_S,  y_itr,  subj_itr,  "train")]
+                                    yp  = MLJ.predict(mach, MLJ.table(Xev))
+                                    p   = [Float64(pdf(s, 1)) for s in yp]
+                                    mcc, f1, sen, spec, bacc, acc = _subj_metrics(p, subjev, yev)
+                                    _push_row!(results_df, dataset_name, method, n_features, clf,
+                                               outer_fold_idx, inner_fold_idx, split,
+                                               mcc, f1, sen, spec, bacc, acc)
+                                end
+
+                            # ---- NaiveBayes (manual Gaussian) ----
+                            elseif clf == "NaiveBayes"
+                                classes = unique(y_bal)
+                                nb_priors = Dict(c => sum(y_bal .== c) / length(y_bal) for c in classes)
+                                nb_means  = Dict{Int, Vector{Float64}}()
+                                nb_stds   = Dict{Int, Vector{Float64}}()
+                                for c in classes
+                                    mask = y_bal .== c
+                                    nb_means[c] = vec(mean(X_bal[mask, :], dims=1))
+                                    nb_stds[c]  = vec(std(X_bal[mask, :],  dims=1))
+                                    nb_stds[c] .= max.(nb_stds[c], 1e-10)
+                                end
+                                for (Xev, yev, subjev, split) in [
+                                        (X_ival_S, y_ival, subj_ival, "val"),
+                                        (X_itr_S,  y_itr,  subj_itr,  "train")]
+                                    p   = _nb_predict(Xev, nb_means, nb_stds, nb_priors, classes)
+                                    mcc, f1, sen, spec, bacc, acc = _subj_metrics(p, subjev, yev)
+                                    _push_row!(results_df, dataset_name, method, n_features, clf,
+                                               outer_fold_idx, inner_fold_idx, split,
+                                               mcc, f1, sen, spec, bacc, acc)
+                                end
+
+                            # ---- LogisticRegression ----
+                            elseif clf == "LogisticRegression"
+                                train_df  = DataFrame(X_bal, :auto)
+                                train_df.y = y_bal
+                                formula   = Term(:y) ~ sum(Term.(Symbol.(names(train_df, Not(:y)))))
+                                lr_model  = try
+                                    glm(formula, train_df, Binomial(), LogitLink();
+                                        maxiter=100, atol=1e-6, rtol=1e-6)
+                                catch
+                                    nothing
+                                end
+                                for (Xev, yev, subjev, split) in [
+                                        (X_ival_S, y_ival, subj_ival, "val"),
+                                        (X_itr_S,  y_itr,  subj_itr,  "train")]
+                                    test_df = DataFrame(Xev, :auto)
+                                    p = if !isnothing(lr_model)
+                                        Float64.(coalesce.(GLM.predict(lr_model, test_df), 0.5))
+                                    else
+                                        fill(mean(y_bal), size(Xev, 1))
+                                    end
+                                    mcc, f1, sen, spec, bacc, acc = _subj_metrics(p, subjev, yev)
+                                    _push_row!(results_df, dataset_name, method, n_features, clf,
+                                               outer_fold_idx, inner_fold_idx, split,
+                                               mcc, f1, sen, spec, bacc, acc)
+                                end
+
+                            # ---- AdaBoost (untuned) ----
+                            elseif clf == "AdaBoost"
+                                ada = AdaBoostModel(n_iter=50)
+                                mach = machine(ada, MLJ.table(X_bal), categorical(y_bal))
+                                MLJ.fit!(mach, verbosity=0)
+                                for (Xev, yev, subjev, split) in [
+                                        (X_ival_S, y_ival, subj_ival, "val"),
+                                        (X_itr_S,  y_itr,  subj_itr,  "train")]
+                                    yp  = MLJ.predict(mach, MLJ.table(Xev))
+                                    p   = [Float64(pdf(s, 1)) for s in yp]
+                                    mcc, f1, sen, spec, bacc, acc = _subj_metrics(p, subjev, yev)
+                                    _push_row!(results_df, dataset_name, method, n_features, clf,
+                                               outer_fold_idx, inner_fold_idx, split,
+                                               mcc, f1, sen, spec, bacc, acc)
+                                end
+
+                            # ---- SVM_RBF (untuned) — string categorical targets ----
+                            elseif clf == "SVM_RBF"
+                                svm_m = SVM(kernel=LIBSVM.Kernel.RadialBasis, gamma=0.02, cost=20.0)
+                                y_cat = categorical(string.(y_bal), levels=["0","1"])
+                                mach  = MLJ.machine(svm_m, MLJ.table(X_bal), y_cat)
+                                MLJ.fit!(mach, verbosity=0)
+                                for (Xev, yev, subjev, split) in [
+                                        (X_ival_S, y_ival, subj_ival, "val"),
+                                        (X_itr_S,  y_itr,  subj_itr,  "train")]
+                                    yp  = MLJ.predict(mach, MLJ.table(Xev))
+                                    p   = [Float64(pdf(s, "1")) for s in yp]
+                                    mcc, f1, sen, spec, bacc, acc = _subj_metrics(p, subjev, yev)
+                                    _push_row!(results_df, dataset_name, method, n_features, clf,
+                                               outer_fold_idx, inner_fold_idx, split,
+                                               mcc, f1, sen, spec, bacc, acc)
+                                end
+
+                            # ---- RandomForest_TUNED — reuse saved best hyperparams ----
+                            elseif clf == "RandomForest_TUNED"
+                                bm  = all_results[dataset_name][outer_fold_idx][method][feature_count]["RandomForest_TUNED"].best_model
+                                rf_t = MLJDecisionTreeInterface.RandomForestClassifier(
+                                    n_trees=bm.n_trees, max_depth=bm.max_depth, rng=inner_seed)
+                                mach = machine(rf_t, MLJ.table(X_bal), categorical(y_bal))
+                                MLJ.fit!(mach, verbosity=0)
+                                for (Xev, yev, subjev, split) in [
+                                        (X_ival_S, y_ival, subj_ival, "val"),
+                                        (X_itr_S,  y_itr,  subj_itr,  "train")]
+                                    yp  = MLJ.predict(mach, MLJ.table(Xev))
+                                    p   = [Float64(pdf(s, 1)) for s in yp]
+                                    mcc, f1, sen, spec, bacc, acc = _subj_metrics(p, subjev, yev)
+                                    _push_row!(results_df, dataset_name, method, n_features, clf,
+                                               outer_fold_idx, inner_fold_idx, split,
+                                               mcc, f1, sen, spec, bacc, acc)
+                                end
+
+                            # ---- AdaBoost_TUNED ----
+                            elseif clf == "AdaBoost_TUNED"
+                                bm   = all_results[dataset_name][outer_fold_idx][method][feature_count]["AdaBoost_TUNED"].best_model
+                                ada_t = AdaBoostModel(n_iter=bm.n_iter)
+                                mach  = machine(ada_t, MLJ.table(X_bal), categorical(y_bal))
+                                MLJ.fit!(mach, verbosity=0)
+                                for (Xev, yev, subjev, split) in [
+                                        (X_ival_S, y_ival, subj_ival, "val"),
+                                        (X_itr_S,  y_itr,  subj_itr,  "train")]
+                                    yp  = MLJ.predict(mach, MLJ.table(Xev))
+                                    p   = [Float64(pdf(s, 1)) for s in yp]
+                                    mcc, f1, sen, spec, bacc, acc = _subj_metrics(p, subjev, yev)
+                                    _push_row!(results_df, dataset_name, method, n_features, clf,
+                                               outer_fold_idx, inner_fold_idx, split,
+                                               mcc, f1, sen, spec, bacc, acc)
+                                end
+
+                            # ---- NeuralNetwork_TUNED — integer targets ----
+                            elseif clf == "NeuralNetwork_TUNED"
+                                bm   = all_results[dataset_name][outer_fold_idx][method][feature_count]["NeuralNetwork_TUNED"].best_model
+                                nn_t = nn_builder(n_feats_sel)
+                                nn_t.lambda = bm.lambda
+                                nn_t.alpha  = bm.alpha
+                                mach = machine(nn_t, MLJ.table(X_bal), categorical(y_bal))
+                                MLJ.fit!(mach, verbosity=0)
+                                for (Xev, yev, subjev, split) in [
+                                        (X_ival_S, y_ival, subj_ival, "val"),
+                                        (X_itr_S,  y_itr,  subj_itr,  "train")]
+                                    yp  = MLJ.predict(mach, MLJ.table(Xev))
+                                    p   = [Float64(pdf(s, 1)) for s in yp]
+                                    mcc, f1, sen, spec, bacc, acc = _subj_metrics(p, subjev, yev)
+                                    _push_row!(results_df, dataset_name, method, n_features, clf,
+                                               outer_fold_idx, inner_fold_idx, split,
+                                               mcc, f1, sen, spec, bacc, acc)
+                                end
+
+                            # ---- SVM_RBF_TUNED — string targets, Pipeline best_model ----
+                            elseif clf == "SVM_RBF_TUNED"
+                                bm    = all_results[dataset_name][outer_fold_idx][method][feature_count]["SVM_RBF_TUNED"].best_model
+                                pipe_t = Pipeline(
+                                    svm = SVM(kernel=LIBSVM.Kernel.RadialBasis,
+                                              cost=bm.svm.cost, gamma=bm.svm.gamma);
+                                    prediction_type=:probabilistic)
+                                y_cat  = categorical(string.(y_bal), levels=["0","1"])
+                                mach   = machine(pipe_t, MLJ.table(X_bal), y_cat)
+                                MLJ.fit!(mach, verbosity=0)
+                                for (Xev, yev, subjev, split) in [
+                                        (X_ival_S, y_ival, subj_ival, "val"),
+                                        (X_itr_S,  y_itr,  subj_itr,  "train")]
+                                    yp  = MLJ.predict(mach, MLJ.table(Xev))
+                                    p   = [Float64(pdf(s, "1")) for s in yp]
+                                    mcc, f1, sen, spec, bacc, acc = _subj_metrics(p, subjev, yev)
+                                    _push_row!(results_df, dataset_name, method, n_features, clf,
+                                               outer_fold_idx, inner_fold_idx, split,
+                                               mcc, f1, sen, spec, bacc, acc)
+                                end
+
+                            end  # classifier dispatch
+
+                            catch e
+                                @warn "extract_inner_fold_metrics: skipped $clf " *
+                                      "($dataset_name, $method, $(n_features)f, " *
+                                      "outer=$outer_fold_idx, inner=$inner_fold_idx): $e"
+                            end
+
+                        end  # for clf
+                    end  # for inner_fold_idx
+                end  # for n_features
+            end  # for method
+        end  # for outer_fold_idx
+
+        println("  ✓ $dataset_name complete")
+    end  # for dataset
+
+    println("\n✓ extract_inner_fold_metrics: $(nrow(results_df)) rows total")
+    return results_df
+end
+
+
+# ============================================================================
+# SUPPLEMENTAL TABLE — inner fold validation metrics summary
+#
+# Aggregates the val-split rows from extract_inner_fold_metrics into a
+# publication-ready table with mean ± 95% CI for each metric.
+# Saved to CSV and rendered via PrettyTables.
+#
+# Arguments
+#   inner_fold_df — output of extract_inner_fold_metrics
+#   strategy      — label appended to the output filename
+# ============================================================================
+function generate_supplemental_table(
+    inner_fold_df::DataFrame,
+    strategy::String = "ADASYN"
+)
+    val_df = filter(r -> r.Split == "val", inner_fold_df)
+
+    # Columns: Dataset, Method, N_Features, Classifier, then metrics
+    metric_cols = [:MCC, :F1, :Sensitivity, :Specificity, :BACC, :Accuracy]
+
+    rows = DataFrame(
+        Dataset    = String[],
+        Method     = String[],
+        N_Features = Int[],
+        Classifier = String[],
+        MCC        = String[],
+        F1         = String[],
+        Accuracy   = String[],
+        BACC       = String[],
+        Sensitivity = String[],
+        Specificity = String[],
+    )
+
+    for gdf in groupby(val_df, [:Dataset, :Method, :N_Features, :Classifier])
+        key = first(gdf)
+        n   = nrow(gdf)
+        n < 2 && continue   # skip degenerate groups
+
+        t_crit = quantile(TDist(n - 1), 0.975)
+
+        fmt_ci(col) = begin
+            vals = Float64.(gdf[!, col])
+            m  = mean(vals)
+            ci = t_crit * std(vals) / sqrt(n)
+            @sprintf("%.3f ± %.3f", m, ci)
+        end
+
+        push!(rows, (
+            Dataset     = key.Dataset,
+            Method      = key.Method,
+            N_Features  = key.N_Features,
+            Classifier  = key.Classifier,
+            MCC         = fmt_ci(:MCC),
+            F1          = fmt_ci(:F1),
+            Accuracy    = fmt_ci(:Accuracy),
+            BACC        = fmt_ci(:BACC),
+            Sensitivity = fmt_ci(:Sensitivity),
+            Specificity = fmt_ci(:Specificity),
+        ))
+    end
+
+    sort!(rows, [:Dataset, :Method, :N_Features, :Classifier])
+
+    # Save CSV
+    date     = Dates.format(now(), "yyyymmdd_HHMMSS")
+    filename = "supplemental_inner_val_metrics_$(strategy)_$(date).csv"
+    CSV.write(filename, rows)
+
+    # Render
+    println("\n" * "="^80)
+    println("Supplemental Table — Inner Fold Validation Metrics (mean ± 95% CI)")
+    println("Strategy: $strategy")
+    println("="^80 * "\n")
+
+    hl = Highlighter(
+        (data, i, j) -> false,   # no conditional highlight — uniform table
+        Crayon(foreground=:default)
+    )
+
+    pretty_table(rows,
+        header      = ["Dataset", "Method", "N Feat", "Classifier",
+                        "MCC", "F1", "Accuracy", "BACC", "Sensitivity", "Specificity"],
+        alignment   = [:l, :l, :r, :l, :r, :r, :r, :r, :r, :r],
+        crop        = :none,
+        autowrap    = true,
+        show_subheader = false)
+
+    println("\n✓ Saved: $filename  ($(nrow(rows)) configurations)")
+    println("="^80)
+
+    return rows
 end

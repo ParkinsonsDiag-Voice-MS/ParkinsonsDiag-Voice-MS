@@ -49,7 +49,7 @@ begin
 
 	# Load everything in the file
 #data = JLD2.load("nested_cv_complet_V1.jld2")
-data = JLD2.load("results_ADASYN_20251218_041133.jld2")
+data = JLD2.load("../01.Production code and results/results_ADASYN_20260430_160136.jld2")
 
 # Access each variable
 	all_results = data["all_results_adasyn"]
@@ -219,6 +219,30 @@ md"""
 md"""
 ### Data Loading
 """
+
+# ╔═╡ a1b2c3d4-e5f6-4789-abcd-ef0123456789
+begin
+    _inner_fold_csv = "../01.Production code and results/inner_fold_metrics_ADASYN_20260430_162406.csv"
+    if isfile(_inner_fold_csv)
+        inner_fold_df = CSV.read(_inner_fold_csv, DataFrame)
+        println("✓ inner_fold_df loaded: $(nrow(inner_fold_df)) rows, " *
+                "N_Features=$(sort(unique(inner_fold_df.N_Features)))")
+    else
+        inner_fold_df = nothing
+        @warn "Inner fold CSV not found: $_inner_fold_csv — Table 2, Fig 6, Fig 8 will be skipped"
+    end
+end
+
+# ╔═╡ b2c3d4e5-f6a7-4890-bcde-f01234567890
+begin
+    if haskey(data, "nn_training_losses")
+        nn_training_losses = data["nn_training_losses"]
+        println("✓ nn_training_losses loaded")
+    else
+        nn_training_losses = nothing
+        @warn "nn_training_losses key not found in JLD2 — Figure 7 will be skipped"
+    end
+end
 
 # ╔═╡ 39e262ee-49c8-4a91-9afa-b928cca89347
 md"""
@@ -1027,6 +1051,145 @@ begin
 		CSV.write("Table1_ADASYN_best_configs.csv", table2)
 	
 	
+end
+
+# ╔═╡ c3d4e5f6-a7b8-4901-cdef-012345678901
+md"""
+### Supplemental Outputs: Table 2, Figures 6–8
+"""
+
+# ╔═╡ d4e5f6a7-b8c9-4012-defa-123456789012
+begin
+    if inner_fold_df === nothing
+        @warn "Table 2 skipped: inner_fold_df not loaded"
+    else
+        best_configs_t2 = Dict(
+            "baseline"  => (method="Boruta", n_features=100, classifier="NeuralNetwork"),
+            "sex aware" => (method="Boruta", n_features=80,  classifier="RandomForest"),
+            "male"      => (method="mRMR",   n_features=20,  classifier="AdaBoost_TUNED"),
+            "female"    => (method="mRMR",   n_features=10,  classifier="RandomForest_TUNED")
+        )
+        tbl2 = generate_table2(inner_fold_df, best_configs_t2)
+        CSV.write("Table2_inner_fold_summary.csv", tbl2)
+        println("✓ Table2_inner_fold_summary.csv saved")
+        md"""**Table 2.** Inner cross-validation performance metrics (mean, 95% CI) for the best model configuration per dataset."""
+    end
+end
+
+# ╔═╡ e5f6a7b8-c9d0-4123-efab-234567890123
+begin
+    if inner_fold_df === nothing
+        @warn "Figure 6 skipped: inner_fold_df not loaded"
+    else
+        _best_configs_f6 = [
+            ("baseline",  "Boruta", 100),
+            ("sex aware", "Boruta", 80),
+            ("male",      "mRMR",   20),
+            ("female",    "mRMR",   10),
+        ]
+        for (ds, meth, nfeat) in _best_configs_f6
+            fig6 = plot_inner_vs_outer_mcc(inner_fold_df, ds, meth, nfeat;
+                clf_colors = classifier_colors)
+            tag = replace(ds, " " => "_")
+            CairoMakie.save("Figure6_InnerOuter_MCC_$(tag).png", fig6;
+                px_per_unit = 2, backgroundcolor = :white)
+            CairoMakie.save("Figure6_InnerOuter_MCC_$(tag).pdf", fig6;
+                backgroundcolor = :white)
+        end
+        println("✓ Figure 6 saved (4 datasets × PNG + PDF)")
+    end
+end
+
+# ╔═╡ f6a7b8c9-d0e1-4234-fabc-345678901234
+begin
+    if nn_training_losses === nothing
+        @warn "Figure 7 skipped: nn_training_losses not loaded"
+    else
+        _nn_configs = Dict{String, Tuple{String,String}}(
+            "baseline" => ("Boruta", "100_features")
+        )
+        for ds in ["sex aware", "male", "female"]
+            best_nn_mcc = -Inf
+            best_meth   = "mRMR"
+            best_feat   = "10_features"
+            for meth in methods, nfeat in sort(collect(top_n_feats_candidates))
+                fkey = "$(nfeat)_features"
+                for clf in ["NeuralNetwork", "NeuralNetwork_TUNED"]
+                    mccs = Float64[]
+                    for fi in 1:n_outer_folds
+                        if haskey(all_results[ds], fi) &&
+                           haskey(all_results[ds][fi], meth) &&
+                           haskey(all_results[ds][fi][meth], fkey) &&
+                           haskey(all_results[ds][fi][meth][fkey], clf)
+                            v = all_results[ds][fi][meth][fkey][clf].mcc
+                            isnan(v) || push!(mccs, v)
+                        end
+                    end
+                    isempty(mccs) && continue
+                    m = mean(mccs)
+                    if m > best_nn_mcc
+                        best_nn_mcc = m
+                        best_meth   = meth
+                        best_feat   = fkey
+                    end
+                end
+            end
+            _nn_configs[ds] = (best_meth, best_feat)
+        end
+        for (ds, (meth, fkey)) in _nn_configs
+            fig7 = plot_nn_loss_curves(nn_training_losses, ds, meth, fkey)
+            tag  = replace(ds, " " => "_")
+            CairoMakie.save("Figure7_NN_loss_$(tag).png", fig7;
+                px_per_unit = 2, backgroundcolor = :white)
+            CairoMakie.save("Figure7_NN_loss_$(tag).pdf", fig7;
+                backgroundcolor = :white)
+        end
+        println("✓ Figure 7 saved (4 datasets × PNG + PDF)")
+    end
+end
+
+# ╔═╡ a7b8c9d0-e1f2-4345-abcd-456789012345
+begin
+    if inner_fold_df === nothing
+        @warn "Figure 8 skipped: inner_fold_df not loaded"
+    elseif length(unique(inner_fold_df.N_Features)) <= 1
+        @warn "Figure 8 skipped: inner fold data contains only " *
+              "N=$(unique(inner_fold_df.N_Features)). " *
+              "Re-run extract_inner_fold_metrics with the full top_n_feats_candidates vector."
+    else
+        for ds in ["baseline", "sex aware", "male", "female"]
+            sub_ds    = filter(r -> r.Dataset == ds && r.Split == "val", inner_fold_df)
+            all_meths = sort(unique(sub_ds.Method))
+            n_meths   = length(all_meths)
+            fig8      = CairoMakie.Figure(size = (500 * n_meths, 520))
+            for (j, meth) in enumerate(all_meths)
+                ax = CairoMakie.Axis(fig8[1, j];
+                    title  = "$ds — $meth",
+                    xlabel = "Number of Features",
+                    ylabel = j == 1 ? "Mean Inner Val MCC" : "")
+                sub_m = filter(r -> r.Method == meth, sub_ds)
+                for clf in sort(unique(sub_m.Classifier))
+                    sub_c = filter(r -> r.Classifier == clf, sub_m)
+                    ns    = sort(unique(sub_c.N_Features))
+                    mccs  = [mean(filter(r -> r.N_Features == n, sub_c).MCC) for n in ns]
+                    c_val = get(classifier_colors, clf, "#888888")
+                    col   = c_val isa Symbol ? string(c_val) : c_val
+                    CairoMakie.lines!(ax, ns, mccs;
+                        label = get(classifier_display_names, clf, clf),
+                        color = col)
+                end
+                if j == n_meths
+                    CairoMakie.axislegend(ax; position = :rb, merge = true)
+                end
+            end
+            tag = replace(ds, " " => "_")
+            CairoMakie.save("Figure8_ValMCC_vs_N_$(tag).png", fig8;
+                px_per_unit = 2, backgroundcolor = :white)
+            CairoMakie.save("Figure8_ValMCC_vs_N_$(tag).pdf", fig8;
+                backgroundcolor = :white)
+        end
+        println("✓ Figure 8 saved (4 datasets × PNG + PDF)")
+    end
 end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
@@ -3993,13 +4156,15 @@ version = "1.13.0+0"
 # ╟─ed9ecccd-c64f-4682-bbec-41a6778e2c32
 # ╟─de84380b-91fc-42be-ba75-b5745adfec92
 # ╟─219bc9bb-ff70-4d64-a17d-ad529bb814dc
-# ╠═ce4240ba-5c1a-4230-8537-bf2ccfa5a2a3
+# ╟─ce4240ba-5c1a-4230-8537-bf2ccfa5a2a3
 # ╟─845d7253-ce5b-4bf4-97c9-16980823d108
 # ╠═729d199b-50b6-413e-9ce6-d5d3213b44f3
 # ╟─760f32a7-c7e6-42de-987e-88dc5b293c67
 # ╟─01c08aed-45f2-4367-8d6c-425a61b7e7d2
 # ╟─2af4be8c-6c14-42a1-8a65-d2744ca9f002
 # ╟─7ea718e9-c1cd-49c3-bb11-a878c0208ca9
+# ╟─a1b2c3d4-e5f6-4789-abcd-ef0123456789
+# ╟─b2c3d4e5-f6a7-4890-bcde-f01234567890
 # ╟─39e262ee-49c8-4a91-9afa-b928cca89347
 # ╠═35057362-9a03-41d9-ada8-46d9e0dd9d12
 # ╟─9280ad56-07aa-4ba0-bd10-f15ad4393c3f
@@ -4021,5 +4186,10 @@ version = "1.13.0+0"
 # ╠═5ef83150-411c-4bc9-9070-0bb0ef7448f0
 # ╟─821b803d-7f43-466e-9a73-47775d7de9ee
 # ╟─0dff516f-5670-4e2a-8003-183d27ef9a0d
+# ╟─c3d4e5f6-a7b8-4901-cdef-012345678901
+# ╟─d4e5f6a7-b8c9-4012-defa-123456789012
+# ╟─e5f6a7b8-c9d0-4123-efab-234567890123
+# ╟─f6a7b8c9-d0e1-4234-fabc-345678901234
+# ╠═a7b8c9d0-e1f2-4345-abcd-456789012345
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002

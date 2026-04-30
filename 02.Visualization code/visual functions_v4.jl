@@ -571,3 +571,263 @@ end
             return Int(round(parse(Float64, s)))  # handles "100.0"
         end
 end
+
+# ============================================================================
+# generate_table2: Table 2 — inner cross-validation performance (95% CI)
+#   inner_df      DataFrame from inner_fold_metrics CSV
+#                 required columns: Dataset, Method, N_Features, Classifier,
+#                                   Split, MCC, F1, Accuracy, BACC,
+#                                   Sensitivity, Specificity
+#   best_configs  Dict: dataset_key => (method=..., n_features=..., classifier=...)
+#   Filters Split == "val", aggregates 15 inner-fold observations per config.
+#   CI format: "mean (lower–upper)" using t(df=14, α=0.025).
+#   Prints via PrettyTables and returns a DataFrame.
+# ============================================================================
+function generate_table2(inner_df::DataFrame, best_configs::Dict)
+    display_labels = Dict(
+        "baseline"  => "Full Dataset",
+        "sex aware" => "Sex-Aware",
+        "male"      => "Male-Specific",
+        "female"    => "Female-Specific"
+    )
+    dataset_order = ["baseline", "sex aware", "male", "female"]
+    t_crit = 2.1448  # t(df=14, α=0.025, two-tailed) for n=15 observations
+
+    function ci95(v)
+        m  = mean(v)
+        se = std(v) / sqrt(length(v))
+        @sprintf("%.3f (%.3f–%.3f)", m, m - t_crit * se, m + t_crit * se)
+    end
+
+    model_config = String[]; fs_method = String[]; n_feats = Int[]
+    classif      = String[]; mcc_ci    = String[]; f1_ci   = String[]
+    acc_ci       = String[]; bacc_ci   = String[]; sens_ci = String[]; spec_ci = String[]
+
+    for ds in dataset_order
+        cfg = best_configs[ds]
+        sub = filter(r -> r.Dataset    == ds             &&
+                          r.Method     == cfg.method     &&
+                          r.N_Features == cfg.n_features &&
+                          r.Classifier == cfg.classifier &&
+                          r.Split      == "val", inner_df)
+        if nrow(sub) < 2
+            @warn "generate_table2: fewer than 2 val rows for dataset=$ds" *
+                  " ($(cfg.method), N=$(cfg.n_features), $(cfg.classifier))"
+            continue
+        end
+        push!(model_config, display_labels[ds])
+        push!(fs_method,    cfg.method)
+        push!(n_feats,      cfg.n_features)
+        push!(classif,      cfg.classifier)
+        push!(mcc_ci,       ci95(sub.MCC))
+        push!(f1_ci,        ci95(sub.F1))
+        push!(acc_ci,       ci95(sub.Accuracy))
+        push!(bacc_ci,      ci95(sub.BACC))
+        push!(sens_ci,      ci95(sub.Sensitivity))
+        push!(spec_ci,      ci95(sub.Specificity))
+    end
+
+    tbl = DataFrame(
+        "Model Configuration"      => model_config,
+        "Feature Selection Method" => fs_method,
+        "Number of Features"       => n_feats,
+        "Classifier"               => classif,
+        "MCC"                      => mcc_ci,
+        "F1"                       => f1_ci,
+        "Accuracy"                 => acc_ci,
+        "Balanced Accuracy"        => bacc_ci,
+        "Sensitivity"              => sens_ci,
+        "Specificity"              => spec_ci
+    )
+    pretty_table(tbl; header_crayon = crayon"bold")
+    return tbl
+end
+
+# ============================================================================
+# plot_inner_vs_outer_mcc: Figure 6 — inner train / inner val / outer test MCC
+#   Shows the nested CV hierarchy for one dataset × method × N configuration.
+#   inner_df     DataFrame from inner_fold_metrics CSV
+#   dataset_name one of "baseline", "sex aware", "male", "female"
+#   method       feature selection method string
+#   n_features   N matching the best Table 1 config for this dataset
+#   clf_colors   Dict mapping classifier key to color (hex string or symbol)
+# Returns CairoMakie.Figure
+# ============================================================================
+function plot_inner_vs_outer_mcc(
+    inner_df::DataFrame,
+    dataset_name::String,
+    method::String,
+    n_features::Int;
+    classifiers = [
+        "RandomForest", "RandomForest_TUNED",
+        "NeuralNetwork", "NeuralNetwork_TUNED",
+        "NaiveBayes", "LogisticRegression",
+        "AdaBoost", "AdaBoost_TUNED",
+        "SVM_RBF", "SVM_RBF_TUNED"
+    ],
+    clf_display = Dict(
+        "RandomForest"        => "RF",       "RandomForest_TUNED"  => "RF (T)",
+        "NeuralNetwork"       => "NN",       "NeuralNetwork_TUNED" => "NN (T)",
+        "NaiveBayes"          => "NB",       "LogisticRegression"  => "LR",
+        "AdaBoost"            => "AB",       "AdaBoost_TUNED"      => "AB (T)",
+        "SVM_RBF"             => "SVM",      "SVM_RBF_TUNED"       => "SVM (T)"
+    ),
+    clf_colors = Dict(
+        "RandomForest"        => "#dc267f",  "RandomForest_TUNED"  => "#dc267f",
+        "NeuralNetwork"       => "#785ef0",  "NeuralNetwork_TUNED" => "#785ef0",
+        "NaiveBayes"          => "#2ca02c",  "LogisticRegression"  => "#9467bd",
+        "AdaBoost"            => "#ffb000",  "AdaBoost_TUNED"      => "#ffb000",
+        "SVM_RBF"             => "#fe6100",  "SVM_RBF_TUNED"       => "#fe6100"
+    )
+)
+    t_crit_test = 2.7764  # t(df=4, α=0.025, two-tailed) for 5 outer folds
+    _ds_labels  = Dict(
+        "baseline"  => "Full Dataset", "sex aware" => "Sex-Aware",
+        "male"      => "Male-Specific", "female"    => "Female-Specific"
+    )
+
+    sub     = filter(r -> r.Dataset    == dataset_name &&
+                          r.Method     == method       &&
+                          r.N_Features == n_features,   inner_df)
+    n_clf   = length(classifiers)
+    clf_tck = [get(clf_display, c, c) for c in classifiers]
+
+    train_x = Float64[]; train_y = Float64[]
+    val_x   = Float64[]; val_y   = Float64[]
+
+    fig = CairoMakie.Figure(size = (max(900, 110 * n_clf), 560))
+    ax  = CairoMakie.Axis(fig[1, 1];
+        title              = "$(get(_ds_labels, dataset_name, dataset_name))" *
+                             "  |  $method, N=$n_features",
+        xlabel             = "Classifier",
+        ylabel             = "MCC",
+        xticks             = (1:n_clf, clf_tck),
+        xticklabelrotation = π / 5,
+        titlesize          = 14,
+        xlabelsize         = 13,
+        ylabelsize         = 13
+    )
+
+    for (i, clf) in enumerate(classifiers)
+        c_sub = filter(r -> r.Classifier == clf, sub)
+        trn   = filter(r -> r.Split == "train", c_sub).MCC
+        vl    = filter(r -> r.Split == "val",   c_sub).MCC
+        isempty(trn) || begin
+            append!(train_x, fill(i - 0.28, length(trn)))
+            append!(train_y, trn)
+        end
+        isempty(vl) || begin
+            append!(val_x, fill(float(i), length(vl)))
+            append!(val_y, vl)
+        end
+    end
+
+    isempty(train_x) || CairoMakie.boxplot!(ax, train_x, train_y;
+        color = (:gray50, 0.60), label = "Inner Train", width = 0.22)
+    isempty(val_x) || CairoMakie.boxplot!(ax, val_x, val_y;
+        color = (:steelblue, 0.75), label = "Inner Val",   width = 0.22)
+
+    # Legend placeholder for test (avoids duplicate entries from per-classifier loop)
+    CairoMakie.scatter!(ax, Float64[], Float64[];
+        color = :black, markersize = 10, label = "Outer Test (95% CI)")
+
+    for (i, clf) in enumerate(classifiers)
+        c_sub = filter(r -> r.Classifier == clf && r.Split == "test", sub)
+        isempty(c_sub) && continue
+        tst = c_sub.MCC
+        m   = mean(tst)
+        se  = length(tst) > 1 ? std(tst) / sqrt(length(tst)) : 0.0
+        lo  = m - t_crit_test * se
+        hi  = m + t_crit_test * se
+        CairoMakie.rangebars!(ax, [i + 0.28], [lo], [hi];
+            color = :black, linewidth = 2)
+        CairoMakie.scatter!(ax, [i + 0.28], [m];
+            color = :black, markersize = 10)
+    end
+
+    CairoMakie.axislegend(ax; position = :rt, framevisible = true)
+    return fig
+end
+
+# ============================================================================
+# plot_nn_loss_curves: Figure 7 — NN epoch-level training loss (2×3 panels)
+#   nn_losses    Dict keyed [dataset][outer_fold_idx][method][feat_key]
+#   dataset_name one of "baseline", "sex aware", "male", "female"
+#   method       feature selection method used in the best NN run
+#   feat_key     feature-count key in the dict, e.g. "100_features"
+# Returns CairoMakie.Figure (2×3 grid: 5 per-fold panels + 1 aggregate)
+# ============================================================================
+function plot_nn_loss_curves(
+    nn_losses::Dict,
+    dataset_name::String,
+    method::String,
+    feat_key::String
+)
+    _ds_labels  = Dict(
+        "baseline"  => "Full Dataset", "sex aware" => "Sex-Aware",
+        "male"      => "Male-Specific", "female"    => "Female-Specific"
+    )
+    n_folds     = 5
+    fold_colors = ["#785ef0", "#648fff", "#dc267f", "#ffb000", "#fe6100"]
+
+    fold_losses = Vector{Float64}[]
+    for fi in 1:n_folds
+        try
+            entry = nn_losses[dataset_name][fi][method][feat_key]
+            lv = if entry isa AbstractVector
+                entry
+            elseif entry isa AbstractDict
+                if haskey(entry, "NeuralNetwork_TUNED_losses") && !isempty(entry["NeuralNetwork_TUNED_losses"])
+                    entry["NeuralNetwork_TUNED_losses"]
+                else
+                    entry["NeuralNetwork_losses"]
+                end
+            else
+                error("unexpected type $(typeof(entry))")
+            end
+            push!(fold_losses, Float64.(lv))
+        catch
+            @warn "plot_nn_loss_curves: missing key for " *
+                  "$dataset_name fold $fi $method $feat_key"
+            push!(fold_losses, Float64[])
+        end
+    end
+
+    fig = CairoMakie.Figure(size = (1400, 850))
+    CairoMakie.Label(fig[0, :],
+        "$(get(_ds_labels, dataset_name, dataset_name)) — NN Training Loss  |  " *
+        "$method, $feat_key";
+        fontsize = 15, font = :bold)
+
+    positions = [(1,1),(1,2),(1,3),(2,1),(2,2)]
+    for (k, (r, c)) in enumerate(positions)
+        ax = CairoMakie.Axis(fig[r, c];
+            title     = "Outer Fold $k",
+            xlabel    = r == 2 ? "Epoch" : "",
+            ylabel    = c == 1 ? "Training Loss" : "",
+            titlesize = 13)
+        lv = fold_losses[k]
+        isempty(lv) && continue
+        CairoMakie.lines!(ax, 1:length(lv), lv;
+            color = fold_colors[k], linewidth = 2)
+    end
+
+    ax_agg = CairoMakie.Axis(fig[2, 3];
+        title     = "Aggregate (mean ± 1 SD)",
+        xlabel    = "Epoch",
+        titlesize = 13)
+    valid = filter(!isempty, fold_losses)
+    if length(valid) >= 2
+        min_len = minimum(length.(valid))
+        mat     = hcat([v[1:min_len] for v in valid]...)
+        μ       = vec(mean(mat, dims = 2))
+        σ       = vec(std(mat,  dims = 2))
+        ep      = 1:min_len
+        CairoMakie.band!(ax_agg, ep, μ .- σ, μ .+ σ; color = (:gray60, 0.35))
+        CairoMakie.lines!(ax_agg, ep, μ; color = :black, linewidth = 2)
+    end
+
+    CairoMakie.colgap!(fig.layout, 10)
+    CairoMakie.rowgap!(fig.layout, 10)
+    return fig
+end
