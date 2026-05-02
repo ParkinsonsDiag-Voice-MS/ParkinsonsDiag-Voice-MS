@@ -660,7 +660,7 @@ $(@bind inner_datasets_temp MultiSelect(
 ))
 
 **Skip if already computed:**
-$(@bind skip_if_exists_temp CheckBox(default=true))
+$(@bind skip_if_exists_temp CheckBox(default=false))
 """
 
 # ╔═╡ d4e5f6a7-b8c9-0123-defa-234567890123
@@ -943,7 +943,8 @@ begin
 				top_n_feats_candidates,
 				n_outer_folds,
 				n_inner_folds,
-				random_seed
+				random_seed;
+				sex_map = Dict("baseline" => sex_vector_b)
 			)
 
 			# Append to JLD2
@@ -3624,11 +3625,11 @@ version = "1.9.2+0"
 # ╟─73d7b22a-b47a-4956-8b86-d89cc93b47b8
 # ╟─0902b80a-ee5d-460f-b040-ad36e0a7ccce
 # ╟─362166f9-6bb2-401e-8b23-e5d2d4fc6f74
-# ╟─f63a9541-70f4-4814-9170-8927e0fb77db
-# ╟─bdac137e-4559-4e9a-a647-4f89cb5ff886
+# ╠═f63a9541-70f4-4814-9170-8927e0fb77db
+# ╠═bdac137e-4559-4e9a-a647-4f89cb5ff886
 # ╟─3ea2963f-1423-42e9-88a5-656e7babac01
 # ╟─19121c58-97c9-45e7-9daf-c6cc9379c729
-# ╟─57ddb627-afc3-4342-b52c-79f2352d56c7
+# ╠═57ddb627-afc3-4342-b52c-79f2352d56c7
 # ╟─17feab6d-d88b-4ada-a12b-b38cb44f0f9f
 # ╟─88631593-ccbc-4c32-bc17-61f7ca63768f
 # ╟─038e29e6-3492-4d34-b9ea-490807d68298
@@ -3645,21 +3646,21 @@ version = "1.9.2+0"
 # ╟─54200adc-7658-47b2-9e49-3e49175f4bfa
 # ╟─8f70f274-bfde-432c-aa9d-9c683ae2a7ab
 # ╟─ebf531d3-8405-4b62-b4bc-98ed91e2e042
-# ╠═7cdc1aff-50aa-47bc-bc44-5bb23e42c929
+# ╟─7cdc1aff-50aa-47bc-bc44-5bb23e42c929
 # ╟─1064fe4e-8c6e-4b74-b979-43a08f34b361
 # ╟─5a24c5a7-9e56-4a0b-a57b-628e45adc207
 # ╟─92c1eb07-b9cc-4a44-aede-6b9b1c40fb8e
 # ╟─a1b2c3d4-e5f6-7890-abcd-ef1234567890
-# ╠═b2c3d4e5-f6a7-8901-bcde-f12345678901
-# ╟─c3d4e5f6-a7b8-9012-cdef-123456789012
-# ╟─d4e5f6a7-b8c9-0123-defa-234567890123
-# ╠═e5f6a7b8-c9d0-1234-efab-345678901234
-# ╠═f6a7b8c9-d0e1-2345-fabc-456789012345
+# ╟─b2c3d4e5-f6a7-8901-bcde-f12345678901
+# ╠═c3d4e5f6-a7b8-9012-cdef-123456789012
+# ╠═d4e5f6a7-b8c9-0123-defa-234567890123
+# ╟─e5f6a7b8-c9d0-1234-efab-345678901234
+# ╟─f6a7b8c9-d0e1-2345-fabc-456789012345
 # ╟─24f1877f-c33f-402a-93f5-ec407056fd52
 # ╟─bd3a217e-e7e6-4ee8-a80f-eb325504bf39
-# ╠═42b7421b-52e9-476a-8549-2e2c05b5cafc
-# ╠═43395906-5291-4547-b2ab-242570c178d1
-# ╠═f96479de-077b-47e7-936f-85570992f4d6
-# ╠═7554749c-9295-4f52-9b98-8e4cf4dedd86
+# ╟─42b7421b-52e9-476a-8549-2e2c05b5cafc
+# ╟─43395906-5291-4547-b2ab-242570c178d1
+# ╟─f96479de-077b-47e7-936f-85570992f4d6
+# ╟─7554749c-9295-4f52-9b98-8e4cf4dedd86
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002

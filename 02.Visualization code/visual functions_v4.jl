@@ -585,12 +585,14 @@ end
 # ============================================================================
 function generate_table2(inner_df::DataFrame, best_configs::Dict)
     display_labels = Dict(
-        "baseline"  => "Full Dataset",
-        "sex aware" => "Sex-Aware",
-        "male"      => "Male-Specific",
-        "female"    => "Female-Specific"
+        "baseline"        => "Full Dataset",
+        "baseline_male"   => "Baseline model, male outputs",
+        "baseline_female" => "Baseline model, female outputs",
+        "sex aware"       => "Sex-Aware",
+        "male"            => "Male-Specific",
+        "female"          => "Female-Specific"
     )
-    dataset_order = ["baseline", "sex aware", "male", "female"]
+    dataset_order = ["baseline", "baseline_male", "baseline_female", "sex aware", "male", "female"]
     t_crit = 2.1448  # t(df=14, α=0.025, two-tailed) for n=15 observations
 
     function ci95(v)
@@ -705,15 +707,26 @@ function plot_inner_vs_outer_mcc(
         xticklabelrotation = π / 5,
         titlesize          = 14,
         xlabelsize         = 13,
-        ylabelsize         = 13
+        ylabelsize         = 13,
+		limits             = (nothing, (-0.75, 1.08))   # ← ADD THIS
     )
+    # ← NEW: reference lines drawn first so they sit behind all data
+    CairoMakie.hlines!(ax, [1.0];
+        color     = (:black, 0.35),
+        linestyle = :dash,
+        linewidth = 1.2)
+    CairoMakie.hlines!(ax, [0.0];
+        color     = (:black, 0.20),
+        linestyle = :dot,
+        linewidth = 1.0)
+	#delete up to here
 
     for (i, clf) in enumerate(classifiers)
         c_sub = filter(r -> r.Classifier == clf, sub)
         trn   = filter(r -> r.Split == "train", c_sub).MCC
         vl    = filter(r -> r.Split == "val",   c_sub).MCC
         isempty(trn) || begin
-            append!(train_x, fill(i - 0.28, length(trn)))
+            append!(train_x, fill(i - 0.32, length(trn)))
             append!(train_y, trn)
         end
         isempty(vl) || begin
@@ -723,9 +736,9 @@ function plot_inner_vs_outer_mcc(
     end
 
     isempty(train_x) || CairoMakie.boxplot!(ax, train_x, train_y;
-        color = (:gray50, 0.60), label = "Inner Train", width = 0.22)
+        color = (:gray50, 0.60), label = "Inner Train", width = 0.18)
     isempty(val_x) || CairoMakie.boxplot!(ax, val_x, val_y;
-        color = (:steelblue, 0.75), label = "Inner Val",   width = 0.22)
+        color = (:steelblue, 0.75), label = "Inner Val",   width = 0.18)
 
     # Legend placeholder for test (avoids duplicate entries from per-classifier loop)
     CairoMakie.scatter!(ax, Float64[], Float64[];

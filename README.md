@@ -164,6 +164,12 @@ All package dependencies are loaded directly inside the Pluto notebooks.
 		-  results_male_(ADASYN)_yyyymmdd_HHMMSS.csv
 		-  results_sex aware_(ADASYN)_yyyymmdd_HHMMSS.csv
 		-  shap_baseline_sex_stratified_ADASYN_yyyymmdd_HHMMSS.csv
+		-  inner_fold_metrics_ADASYN_yyyymmdd_HHMMSS.csv
+
+	d. Run the **"Inner Fold Metric Extraction (Second Pass)"** section to generate
+	   sex-stratified inner-fold validation metrics. The skip checkbox defaults to **off**
+	   (always re-runs); enable it to skip extraction when the data are already stored in
+	   the JLD2.
 
 7. open the visualization notebook and update the names of the files to be loaded with ones genetared during your run:
 	```julia

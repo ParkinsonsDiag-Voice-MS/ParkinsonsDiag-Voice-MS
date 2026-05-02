@@ -49,7 +49,7 @@ begin
 
 	# Load everything in the file
 #data = JLD2.load("nested_cv_complet_V1.jld2")
-data = JLD2.load("../01.Production code and results/results_ADASYN_20260430_160136.jld2")
+data = JLD2.load("../01.Production code and results/results_ADASYN_20260502_114136.jld2")
 
 # Access each variable
 	all_results = data["all_results_adasyn"]
@@ -222,7 +222,7 @@ md"""
 
 # ╔═╡ a1b2c3d4-e5f6-4789-abcd-ef0123456789
 begin
-    _inner_fold_csv = "../01.Production code and results/inner_fold_metrics_ADASYN_20260430_162406.csv"
+    _inner_fold_csv = "../01.Production code and results/inner_fold_metrics_ADASYN_20260502_120358.csv"
     if isfile(_inner_fold_csv)
         inner_fold_df = CSV.read(_inner_fold_csv, DataFrame)
         println("✓ inner_fold_df loaded: $(nrow(inner_fold_df)) rows, " *
@@ -931,12 +931,12 @@ begin
 	# --- 1) Load fold-level results (update paths if needed) ---
 	paths = Dict(
 	    :baseline        => 
-			"../01.Production code and results/results_baseline_(ADASYN)_20251218_041133.csv",
-	    :sex_aware       => "../01.Production code and results/results_sex aware_(ADASYN)_20251218_041133.csv",
-	    :male            => "../01.Production code and results/results_male_(ADASYN)_20251218_041133.csv",
-	    :female          => "../01.Production code and results/results_female_(ADASYN)_20251218_041133.csv",
-	    :baseline_male   => "../01.Production code and results/results_baseline_male_(ADASYN)_20251218_041133.csv",
-	    :baseline_female => "../01.Production code and results/results_baseline_female_(ADASYN)_20251218_041133.csv",
+			"../01.Production code and results/results_baseline_(ADASYN)_20260502_114136.csv",
+	    :sex_aware       => "../01.Production code and results/results_sex aware_(ADASYN)_20260502_114136.csv",
+	    :male            => "../01.Production code and results/results_male_(ADASYN)_20260502_114136.csv",
+	    :female          => "../01.Production code and results/results_female_(ADASYN)_20260502_114136.csv",
+	    :baseline_male   => "../01.Production code and results/results_baseline_male_(ADASYN)_20260502_114136.csv",
+	    :baseline_female => "../01.Production code and results/results_baseline_female_(ADASYN)_20260502_114136.csv",
 	)
 	
 	dfs = Dict(k => CSV.read(v, DataFrame) for (k,v) in paths)
@@ -1064,10 +1064,18 @@ begin
         @warn "Table 2 skipped: inner_fold_df not loaded"
     else
         best_configs_t2 = Dict(
-            "baseline"  => (method="Boruta", n_features=100, classifier="NeuralNetwork"),
-            "sex aware" => (method="Boruta", n_features=80,  classifier="RandomForest"),
-            "male"      => (method="mRMR",   n_features=20,  classifier="AdaBoost_TUNED"),
-            "female"    => (method="mRMR",   n_features=10,  classifier="RandomForest_TUNED")
+            "baseline"        => (method="Boruta", n_features=80,
+								  classifier="NeuralNetwork"),
+            "baseline_male"   => (method="Boruta", n_features=80,
+								  classifier="NeuralNetwork"),
+            "baseline_female" => (method="Boruta", n_features=80,
+								  classifier="NeuralNetwork"),
+            "sex aware"       => (method="mRMR",   n_features=50,
+								  classifier="RandomForest"),
+            "male"            => (method="mRMR",   n_features=20,
+								  classifier="AdaBoost_TUNED"),
+            "female"          => (method="mRMR",   n_features=10,
+								  classifier="RandomForest_TUNED")
         )
         tbl2 = generate_table2(inner_fold_df, best_configs_t2)
         CSV.write("Table2_inner_fold_summary.csv", tbl2)
@@ -4162,20 +4170,20 @@ version = "1.13.0+0"
 # ╟─760f32a7-c7e6-42de-987e-88dc5b293c67
 # ╟─01c08aed-45f2-4367-8d6c-425a61b7e7d2
 # ╟─2af4be8c-6c14-42a1-8a65-d2744ca9f002
-# ╟─7ea718e9-c1cd-49c3-bb11-a878c0208ca9
-# ╟─a1b2c3d4-e5f6-4789-abcd-ef0123456789
-# ╟─b2c3d4e5-f6a7-4890-bcde-f01234567890
+# ╠═7ea718e9-c1cd-49c3-bb11-a878c0208ca9
+# ╠═a1b2c3d4-e5f6-4789-abcd-ef0123456789
+# ╠═b2c3d4e5-f6a7-4890-bcde-f01234567890
 # ╟─39e262ee-49c8-4a91-9afa-b928cca89347
 # ╠═35057362-9a03-41d9-ada8-46d9e0dd9d12
 # ╟─9280ad56-07aa-4ba0-bd10-f15ad4393c3f
 # ╠═693a6685-94ca-4411-8428-f69cab82ea9e
 # ╟─3e2b42e6-ed38-49a6-862e-6bfb185c6820
-# ╟─fc342c8b-9eee-481f-896d-0d6eb0848600
+# ╠═fc342c8b-9eee-481f-896d-0d6eb0848600
 # ╟─5b88c326-d26a-49fb-bc90-d5159ac9726b
-# ╟─8dddd871-4e30-4f55-a401-fb2fe0b20d95
-# ╟─0fc4cb39-e064-4c7d-865f-e42973233871
+# ╠═8dddd871-4e30-4f55-a401-fb2fe0b20d95
+# ╠═0fc4cb39-e064-4c7d-865f-e42973233871
 # ╟─eaae31bd-ad32-4c9b-8305-e5525156fec4
-# ╟─ee35adca-dcbc-4310-8476-772941ba4487
+# ╠═ee35adca-dcbc-4310-8476-772941ba4487
 # ╟─89911a5c-29e0-478e-9e95-944fbf583690
 # ╟─e80226af-7217-4eb4-8ba8-d42c917f93ab
 # ╟─b02a7700-7544-4703-8d18-40c6b24ead38
@@ -4186,10 +4194,10 @@ version = "1.13.0+0"
 # ╠═5ef83150-411c-4bc9-9070-0bb0ef7448f0
 # ╟─821b803d-7f43-466e-9a73-47775d7de9ee
 # ╟─0dff516f-5670-4e2a-8003-183d27ef9a0d
-# ╟─c3d4e5f6-a7b8-4901-cdef-012345678901
-# ╟─d4e5f6a7-b8c9-4012-defa-123456789012
-# ╟─e5f6a7b8-c9d0-4123-efab-234567890123
-# ╟─f6a7b8c9-d0e1-4234-fabc-345678901234
+# ╠═c3d4e5f6-a7b8-4901-cdef-012345678901
+# ╠═d4e5f6a7-b8c9-4012-defa-123456789012
+# ╠═e5f6a7b8-c9d0-4123-efab-234567890123
+# ╠═f6a7b8c9-d0e1-4234-fabc-345678901234
 # ╠═a7b8c9d0-e1f2-4345-abcd-456789012345
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002

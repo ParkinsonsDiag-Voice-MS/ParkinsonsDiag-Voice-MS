@@ -3437,7 +3437,8 @@ function extract_inner_fold_metrics(
     top_n_feats_candidates::Vector{Int},
     n_outer_folds::Int,
     n_inner_folds::Int,
-    random_seed::Int
+    random_seed::Int;
+    sex_map::Dict = Dict()
 )::DataFrame
 
     # ------------------------------------------------------------------
@@ -3525,12 +3526,25 @@ function extract_inner_fold_metrics(
                    mcc, f1, sen, spec, bacc, acc))
     end
 
+    function _push_sex_val_rows!(df, p_val, subj_ival, y_ival, sex_vec,
+                                 method, n_features, clf, o_fold, i_fold)
+        for (sex_val, sex_ds) in ((1.0, "baseline_male"), (0.0, "baseline_female"))
+            mask = sex_vec .== sex_val
+            sum(mask) < 2 && continue
+            length(unique(y_ival[mask])) < 2 && continue
+            mcc, f1, sen, spec, bacc, acc = _subj_metrics(p_val[mask], subj_ival[mask], y_ival[mask])
+            _push_row!(df, sex_ds, method, n_features, clf,
+                       o_fold, i_fold, "val", mcc, f1, sen, spec, bacc, acc)
+        end
+    end
+
     # ==================================================================
     # MAIN LOOP
     # ==================================================================
     for (dataset_name, (X, y, subjects)) in dataset_map
 
         !haskey(all_results, dataset_name) && continue
+        is_baseline = (dataset_name == "baseline")
 
         println("\n" * "="^60)
         println("extract_inner_fold_metrics: $dataset_name")
@@ -3546,6 +3560,8 @@ function extract_inner_fold_metrics(
             X_outer_train      = X[outer_fold.train, :]
             y_outer_train      = y[outer_fold.train]
             subj_outer_train   = subjects[outer_fold.train]
+            sex_outer_train    = is_baseline && haskey(sex_map, "baseline") ?
+                                 sex_map["baseline"][outer_fold.train] : Float64[]
 
             inner_folds = stratified_subject_level_cv(
                 subj_outer_train, y_outer_train, n_inner_folds;
@@ -3563,6 +3579,20 @@ function extract_inner_fold_metrics(
                         _push_row!(results_df, dataset_name, method, n_features, clf,
                                    outer_fold_idx, 0, "test",
                                    r.mcc, r.f1, r.sen, r.spec, r.bacc, r.acc)
+                        if is_baseline
+                            sex_key = "$(clf)_sex"
+                            fdict = all_results[dataset_name][outer_fold_idx][method][feature_count]
+                            if haskey(fdict, sex_key)
+                                sr = fdict[sex_key]
+                                for (sex_res, sex_ds) in ((sr.male, "baseline_male"), (sr.female, "baseline_female"))
+                                    isnan(sex_res.mcc) && continue
+                                    _push_row!(results_df, sex_ds, method, n_features, clf,
+                                               outer_fold_idx, 0, "test",
+                                               sex_res.mcc, sex_res.f1, sex_res.sen,
+                                               sex_res.spec, sex_res.bacc, sex_res.acc)
+                                end
+                            end
+                        end
                     end
 
                     # ---- inner fold loop ----
@@ -3578,6 +3608,8 @@ function extract_inner_fold_metrics(
                         X_ival_raw = X_outer_train[inner_fold.test, saved_features]
                         y_ival     = y_outer_train[inner_fold.test]
                         subj_ival  = subj_outer_train[inner_fold.test]
+                        sex_ival   = is_baseline && !isempty(sex_outer_train) ?
+                                     sex_outer_train[inner_fold.test] : Float64[]
 
                         # Standardize (fit on inner train)
                         X_itr_S, X_ival_S = standardize_pair(X_itr_raw, X_ival_raw)
@@ -3594,6 +3626,7 @@ function extract_inner_fold_metrics(
                             # Try/catch so a single failure doesn't abort the loop
                             try
 
+                            p_val = Float64[]
                             # ---- RandomForest (untuned) ----
                             if clf == "RandomForest"
                                 rf = MLJDecisionTreeInterface.RandomForestClassifier(
@@ -3609,6 +3642,7 @@ function extract_inner_fold_metrics(
                                     _push_row!(results_df, dataset_name, method, n_features, clf,
                                                outer_fold_idx, inner_fold_idx, split,
                                                mcc, f1, sen, spec, bacc, acc)
+                                    split == "val" && (p_val = p)
                                 end
 
                             # ---- NeuralNetwork (untuned) ----
@@ -3625,6 +3659,7 @@ function extract_inner_fold_metrics(
                                     _push_row!(results_df, dataset_name, method, n_features, clf,
                                                outer_fold_idx, inner_fold_idx, split,
                                                mcc, f1, sen, spec, bacc, acc)
+                                    split == "val" && (p_val = p)
                                 end
 
                             # ---- NaiveBayes (manual Gaussian) ----
@@ -3647,6 +3682,7 @@ function extract_inner_fold_metrics(
                                     _push_row!(results_df, dataset_name, method, n_features, clf,
                                                outer_fold_idx, inner_fold_idx, split,
                                                mcc, f1, sen, spec, bacc, acc)
+                                    split == "val" && (p_val = p)
                                 end
 
                             # ---- LogisticRegression ----
@@ -3673,6 +3709,7 @@ function extract_inner_fold_metrics(
                                     _push_row!(results_df, dataset_name, method, n_features, clf,
                                                outer_fold_idx, inner_fold_idx, split,
                                                mcc, f1, sen, spec, bacc, acc)
+                                    split == "val" && (p_val = p)
                                 end
 
                             # ---- AdaBoost (untuned) ----
@@ -3689,6 +3726,7 @@ function extract_inner_fold_metrics(
                                     _push_row!(results_df, dataset_name, method, n_features, clf,
                                                outer_fold_idx, inner_fold_idx, split,
                                                mcc, f1, sen, spec, bacc, acc)
+                                    split == "val" && (p_val = p)
                                 end
 
                             # ---- SVM_RBF (untuned) — string categorical targets ----
@@ -3706,6 +3744,7 @@ function extract_inner_fold_metrics(
                                     _push_row!(results_df, dataset_name, method, n_features, clf,
                                                outer_fold_idx, inner_fold_idx, split,
                                                mcc, f1, sen, spec, bacc, acc)
+                                    split == "val" && (p_val = p)
                                 end
 
                             # ---- RandomForest_TUNED — reuse saved best hyperparams ----
@@ -3724,6 +3763,7 @@ function extract_inner_fold_metrics(
                                     _push_row!(results_df, dataset_name, method, n_features, clf,
                                                outer_fold_idx, inner_fold_idx, split,
                                                mcc, f1, sen, spec, bacc, acc)
+                                    split == "val" && (p_val = p)
                                 end
 
                             # ---- AdaBoost_TUNED ----
@@ -3741,6 +3781,7 @@ function extract_inner_fold_metrics(
                                     _push_row!(results_df, dataset_name, method, n_features, clf,
                                                outer_fold_idx, inner_fold_idx, split,
                                                mcc, f1, sen, spec, bacc, acc)
+                                    split == "val" && (p_val = p)
                                 end
 
                             # ---- NeuralNetwork_TUNED — integer targets ----
@@ -3760,6 +3801,7 @@ function extract_inner_fold_metrics(
                                     _push_row!(results_df, dataset_name, method, n_features, clf,
                                                outer_fold_idx, inner_fold_idx, split,
                                                mcc, f1, sen, spec, bacc, acc)
+                                    split == "val" && (p_val = p)
                                 end
 
                             # ---- SVM_RBF_TUNED — string targets, Pipeline best_model ----
@@ -3781,9 +3823,15 @@ function extract_inner_fold_metrics(
                                     _push_row!(results_df, dataset_name, method, n_features, clf,
                                                outer_fold_idx, inner_fold_idx, split,
                                                mcc, f1, sen, spec, bacc, acc)
+                                    split == "val" && (p_val = p)
                                 end
 
                             end  # classifier dispatch
+
+                            if is_baseline && !isempty(p_val)
+                                _push_sex_val_rows!(results_df, p_val, subj_ival, y_ival, sex_ival,
+                                                    method, n_features, clf, outer_fold_idx, inner_fold_idx)
+                            end
 
                             catch e
                                 @warn "extract_inner_fold_metrics: skipped $clf " *

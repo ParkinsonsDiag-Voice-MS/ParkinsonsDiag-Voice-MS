@@ -72,8 +72,8 @@ The nested CV orchestrator runs outer × inner fold loops. Key stages per fold:
 
 #### Post-processing / export functions (new in v9)
 
-- `extract_inner_fold_metrics(all_results, dataset_map, top_n_feats_candidates, n_outer_folds, n_inner_folds, random_seed) → DataFrame`  
-  Re-runs the inner-fold splits (no new grid search or feature selection) to recover per-inner-fold train and val metrics for every outer fold × method × N × classifier combination. Also appends outer test metrics (Split = `"test"`) for direct comparison. Returns a flat DataFrame with 13 columns: Dataset, Method, N_Features, Classifier, Outer_Fold, Inner_Fold, Split, MCC, F1, Sensitivity, Specificity, BACC, Accuracy.
+- `extract_inner_fold_metrics(all_results, dataset_map, top_n_feats_candidates, n_outer_folds, n_inner_folds, random_seed; sex_map=Dict()) → DataFrame`  
+  Re-runs the inner-fold splits (no new grid search or feature selection) to recover per-inner-fold train and val metrics for every outer fold × method × N × classifier combination. Also appends outer test metrics (Split = `"test"`) for direct comparison. When `sex_map` contains a `"baseline"` entry (sex vector), the function additionally generates `baseline_male` and `baseline_female` rows for both inner-val and outer-test splits. Returns a flat DataFrame with 13 columns: Dataset, Method, N_Features, Classifier, Outer_Fold, Inner_Fold, Split, MCC, F1, Sensitivity, Specificity, BACC, Accuracy.
 
 - `generate_supplemental_table(inner_fold_df, strategy="ADASYN") → DataFrame`  
   Filters Split == `"val"` rows from `extract_inner_fold_metrics` output, groups by Dataset × Method × N_Features × Classifier, and formats mean ± 95% CI (t-distribution, df = n−1) for all six metrics. Prints via PrettyTables and saves a timestamped CSV (`supplemental_inner_val_metrics_<strategy>_<timestamp>.csv`).
@@ -123,7 +123,7 @@ Pluto notebook that drives the full nested CV pipeline: loads the dataset, confi
 
 A dedicated Pluto section ("Inner Fold Metric Extraction (Second Pass)") runs `extract_inner_fold_metrics` post-hoc, reusing saved feature selections and best hyperparameters without repeating feature selection or grid search. Controls:
 - Dataset multi-select (default: all four)
-- **Skip if already computed** checkbox (default: on) — checks for the `inner_fold_metrics_adasyn` key in the current JLD2 before running
+- **Skip if already computed** checkbox (default: off) — checks for the `inner_fold_metrics_adasyn` key in the current JLD2 before running; set it on to avoid re-extraction when the key already exists
 - Apply button (`run_inner_extract`) triggers extraction; re-clicking is safe due to skip logic
 
 Output is appended to the existing JLD2 under `inner_fold_metrics_adasyn` and also exported as a timestamped CSV (`inner_fold_metrics_ADASYN_<timestamp>.csv`).

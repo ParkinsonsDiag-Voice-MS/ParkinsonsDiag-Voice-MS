@@ -1,5 +1,43 @@
 # Changelog
 
+## 2026-05-02
+
+Sex-stratified inner-fold metrics are now included in the cross-validation
+transparency output, matching the granularity of the outer CV results.
+
+### functions_opt_grid_v9.jl
+
+- **`extract_inner_fold_metrics` — `sex_map` keyword argument**: New optional
+  keyword `sex_map::Dict = Dict()` accepts a mapping of dataset name to sex
+  vector (e.g. `Dict("baseline" => sex_vector_b)`). When provided for the
+  baseline dataset, the function generates `baseline_male` and
+  `baseline_female` rows for both inner-validation and outer-test splits,
+  mirroring the sex-stratified breakdown produced by the main training loop.
+
+- **New private helper `_push_sex_val_rows!`**: Splits inner-val predictions
+  by sex (1.0 = male, 0.0 = female) and appends `baseline_male` /
+  `baseline_female` rows to the results DataFrame. Skips any sex-group that
+  has fewer than 2 samples or only one class label.
+
+- **Baseline outer-test sex rows**: The outer-test block now reads saved
+  `<clf>_sex` keys from `all_results` for the baseline dataset and pushes the
+  corresponding `baseline_male` / `baseline_female` test-split rows, so the
+  inner-fold DataFrame covers sex-stratified performance at every split level.
+
+### PD_Training_2LyCV_SHAP_Grid_MultiSt_ClassImb_v7.jl
+
+- **Skip checkbox default changed to off**: `CheckBox(default=true)` is now
+  `CheckBox(default=false)`. The "Skip if already computed" toggle in the
+  Inner Fold Metric Extraction section defaults to **unchecked**, so the
+  second-pass extraction always re-runs unless the user explicitly enables the
+  skip guard.
+
+- **`sex_map` passed to `extract_inner_fold_metrics`**: The Apply-button cell
+  now passes `sex_map = Dict("baseline" => sex_vector_b)` to ensure
+  sex-stratified inner metrics are generated for the baseline dataset.
+
+---
+
 ## 2026-04-30
 
 All changes in this release address a peer reviewer request for cross-validation
