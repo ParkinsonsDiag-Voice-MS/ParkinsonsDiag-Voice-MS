@@ -9,17 +9,29 @@ This is a Julia research codebase for a manuscript on **Parkinson's disease (PD)
 ## Repository Structure
 
 ```
-01.Production code and results/    # Core ML pipeline + output CSV/JLD2 files
-    ADASYN_v1.jl                   # ADASYN module (standalone, importable)
-    functions_opt_grid_v9.jl       # All ML pipeline utilities and functions
-    Parkinsons_Speech-Features.csv # Input dataset (753 features + label)
-    results_ADASYN_*.jld2          # Serialized nested CV results (JLD2 format)
-    results_*.csv                  # Exported per-fold metric tables
+src/
+    training/
+        ADASYN_v1.jl                   # ADASYN module (standalone, importable)
+        functions_opt_grid_v9.jl       # All ML pipeline utilities and functions
+        PD_Training_2LyCV_SHAP_Grid_MultiSt_ClassImb_v7.jl  # Training Pluto notebook
+    visualization/
+        PD_Visuals_ADSYN_models_v5.jl  # Main Pluto notebook for all figures/tables
+        visual functions_v4.jl         # Plotting helpers (sourced by the notebook)
 
-02.Visualization code/             # Pluto.jl notebook + visual helper functions
-    PD_Visuals_ADSYN_models_v5.jl  # Main Pluto notebook for all figures/tables
-    visual functions_v4.jl         # Plotting helpers (sourced by the notebook)
-    *.csv / *.pdf / *.png          # Pre-generated figures and data exports
+data/
+    input/
+        Parkinsons_Speech-Features.csv # Input dataset (753 features + label)
+
+outputs/
+    models/                            # Serialized nested CV results (JLD2 format)
+        archive/                       # Legacy / historical JLD2 files
+    metrics/                           # Per-fold and per-dataset CSV exports
+    predictions/                       # Subject-level prediction CSVs
+    shap/                              # SHAP feature importance CSVs
+    figures/                           # Publication figures (PDF + PNG)
+    tables/                            # Manuscript tables (CSV)
+
+assets/                                # Static images used in figures (symbols)
 ```
 
 ## Running the Code
@@ -29,21 +41,23 @@ This is a Julia research codebase for a manuscript on **Parkinson's disease (PD)
 julia --threads auto
 ```
 
-**Production pipeline** (`functions_opt_grid_v9.jl`): This file contains only function definitions — it must be `include`d from a driver script or REPL session. It expects `ADASYN_v1.jl` to be included first:
+**Production pipeline** (`src/training/functions_opt_grid_v9.jl`): This file contains only function definitions — it must be `include`d from a driver script or REPL session. It expects `ADASYN_v1.jl` to be included first:
 ```julia
 include("ADASYN_v1.jl")
 using .ADASYN
 include("functions_opt_grid_v9.jl")
 ```
 
-**Visualization notebook** (Pluto.jl): Open `PD_Visuals_ADSYN_models_v5.jl` in Pluto. It loads the pre-computed `results_ADASYN_*.jld2` file and sources `visual functions_v4.jl`.
+**Training notebook** (Pluto.jl): Open `src/training/PD_Training_2LyCV_SHAP_Grid_MultiSt_ClassImb_v7.jl` in Pluto. Outputs are written to `outputs/` subdirectories relative to the repo root.
+
+**Visualization notebook** (Pluto.jl): Open `src/visualization/PD_Visuals_ADSYN_models_v5.jl` in Pluto. It loads `outputs/models/results_ADASYN_*.jld2` and sources `visual functions_v4.jl`.
 ```julia
 using Pluto; Pluto.run()
 ```
 
 **Run ADASYN tests**:
 ```bash
-julia --threads auto ADASYN_v1.jl
+julia --threads auto src/training/ADASYN_v1.jl
 ```
 
 ## Architecture
@@ -75,8 +89,14 @@ The nested CV orchestrator runs outer × inner fold loops. Key stages per fold:
 - `extract_inner_fold_metrics(all_results, dataset_map, top_n_feats_candidates, n_outer_folds, n_inner_folds, random_seed; sex_map=Dict()) → DataFrame`  
   Re-runs the inner-fold splits (no new grid search or feature selection) to recover per-inner-fold train and val metrics for every outer fold × method × N × classifier combination. Also appends outer test metrics (Split = `"test"`) for direct comparison. When `sex_map` contains a `"baseline"` entry (sex vector), the function additionally generates `baseline_male` and `baseline_female` rows for both inner-val and outer-test splits. Returns a flat DataFrame with 13 columns: Dataset, Method, N_Features, Classifier, Outer_Fold, Inner_Fold, Split, MCC, F1, Sensitivity, Specificity, BACC, Accuracy.
 
-- `generate_supplemental_table(inner_fold_df, strategy="ADASYN") → DataFrame`  
-  Filters Split == `"val"` rows from `extract_inner_fold_metrics` output, groups by Dataset × Method × N_Features × Classifier, and formats mean ± 95% CI (t-distribution, df = n−1) for all six metrics. Prints via PrettyTables and saves a timestamped CSV (`supplemental_inner_val_metrics_<strategy>_<timestamp>.csv`).
+- `generate_supplemental_table(inner_fold_df, strategy="ADASYN"; output_dir=".")  → DataFrame`  
+  Filters Split == `"val"` rows from `extract_inner_fold_metrics` output, groups by Dataset × Method × N_Features × Classifier, and formats mean ± 95% CI (t-distribution, df = n−1) for all six metrics. Prints via PrettyTables and saves a timestamped CSV to `output_dir` (`supplemental_inner_val_metrics_<strategy>_<timestamp>.csv`).
+
+The following export functions all accept an `output_dir::String = "."` keyword that controls where generated CSVs are written (default: current working directory):
+- `export_all_results_to_csv` — per-dataset fold metrics
+- `export_baseline_sex_stratified` — sex-stratified baseline metrics
+- `export_baseline_sex_stratified_shap` — sex-stratified SHAP values
+- `generate_supplemental_table` — inner-fold validation summary
 
 ### Results storage
 

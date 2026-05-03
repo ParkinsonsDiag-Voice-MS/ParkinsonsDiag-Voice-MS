@@ -1,5 +1,60 @@
 # Changelog
 
+## 2026-05-02 — Project restructure, output routing, and RNG reproducibility fix
+
+Three independent improvements applied in this session.
+
+### Project folder reorganisation (all files)
+
+The two legacy numbered folders (`01.Production code and results/`,
+`02.Visualization code/`) have been replaced with a clean directory hierarchy:
+
+```
+src/training/      — training notebook, pipeline functions, ADASYN module
+src/visualization/ — visualization notebook, plotting helpers
+data/input/        — input dataset CSV
+outputs/models/    — JLD2 results files
+outputs/metrics/   — per-fold and inner-fold metric CSVs
+outputs/predictions/ — subject-level prediction CSVs
+outputs/shap/      — SHAP value CSVs
+outputs/figures/   — PDF and PNG figures
+outputs/tables/    — manuscript table CSVs
+assets/            — static assets
+```
+
+All `include` paths, data load paths, JLD2 save/load paths, and `CairoMakie.save`
+/ `savefig` paths in both notebooks have been updated to reflect the new layout.
+
+### functions_opt_grid_v9.jl — `output_dir` keyword for export functions
+
+Four export functions that previously wrote to `pwd()` unconditionally now accept
+an `output_dir::String = "."` keyword argument. The training notebook passes the
+appropriate `outputs/` subdirectory at each call site so all generated files land
+in the correct folder automatically.
+
+Functions updated:
+- `export_all_results_to_csv`
+- `export_baseline_sex_stratified`
+- `export_baseline_sex_stratified_shap`
+- `generate_supplemental_table`
+
+### functions_opt_grid_v9.jl — RNG fix in `predict_with_tuned_neural`
+
+**Problem**: The `training_losses` capture block in `predict_with_tuned_neural`
+always took the else-branch (MLJTuning on the installed version does not expose
+`model_report` in `best_report`). The else-branch called `MLJ.fit!` from an
+unpredictable global RNG state, advancing it by an indeterminate amount and
+breaking fixed-seed reproducibility for any subsequent global-RNG consumer.
+
+**Fix**: `Random.seed!(rng)` is called immediately before the fallback refit,
+where `rng` is the same `Int` seed already passed into `predict_with_tuned_neural`.
+This makes the refit deterministic — the same seed always advances global RNG by
+the same amount — without changing any classifier's own seeded behaviour.
+
+Two diagnostic `println` statements added during debugging were also removed.
+
+---
+
 ## 2026-05-02
 
 Sex-stratified inner-fold metrics are now included in the cross-validation

@@ -1,0 +1,7 @@
+Model configuration,FS method,N features,Classifier,MCC,F1,Balanced Accuracy,Sensitivity,Specificity
+Baseline (pooled; sex excluded),Boruta,100,NeuralNetwork,0.587 ± 0.158,0.906 ± 0.033,0.769 ± 0.090,0.941 ± 0.022,0.597 ± 0.171
+"Baseline model, male outputs",Boruta,100,NeuralNetwork,0.418 ± 0.311,0.921 ± 0.046,0.684 ± 0.141,0.942 ± 0.059,0.427 ± 0.273
+"Baseline model, female outputs",Boruta,100,NeuralNetwork,0.580 ± 0.318,0.880 ± 0.078,0.771 ± 0.161,0.931 ± 0.060,0.611 ± 0.281
+Sex-aware (pooled; sex included),mRMR,50,RandomForest,0.575 ± 0.157,0.891 ± 0.037,0.789 ± 0.086,0.888 ± 0.043,0.690 ± 0.160
+Male-only model,mRMR,20,AdaBoost_TUNED,0.466 ± 0.287,0.913 ± 0.041,0.728 ± 0.166,0.926 ± 0.040,0.530 ± 0.323
+Female-only model,mRMR,10,RandomForest_TUNED,0.674 ± 0.181,0.881 ± 0.065,0.837 ± 0.091,0.865 ± 0.099,0.808 ± 0.158

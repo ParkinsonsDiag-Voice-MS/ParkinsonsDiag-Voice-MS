@@ -32,3 +32,5 @@ JuliaLocalPreferences.toml
 .DS_Store
 *.Rproj
 .claude/settings.local.json
+.claude
+*CLAUDE*.MD

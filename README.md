@@ -130,20 +130,37 @@ All package dependencies are loaded directly inside the Pluto notebooks.
 	using Pluto; Pluto.run()
 	```
 
-4. Download and copy all the files of the repository in the same folder structure to your Julia working directory
+4. Clone or download the repository. The folder structure is:
+
+	```
+	ParkinsonsDiag-Voice-MS/
+	├── src/
+	│   ├── training/          # Training notebook + pipeline functions + ADASYN module
+	│   └── visualization/     # Visualization notebook + plotting helpers
+	├── data/
+	│   └── input/             # Input dataset (Parkinsons_Speech-Features.csv)
+	├── outputs/
+	│   ├── models/            # JLD2 results files
+	│   ├── metrics/           # Per-fold metric CSVs
+	│   ├── predictions/       # Subject-level prediction CSVs
+	│   ├── shap/              # SHAP value CSVs
+	│   ├── figures/           # PDF and PNG figures
+	│   └── tables/            # Manuscript table CSVs
+	└── assets/                # Static assets (logos, reference images)
+	```
 
 5. Run the Model training notebook:
    
-	a. From Pluto open  the Model training notebook (primary):
+	a. From Pluto open the Model training notebook (primary):
 
 	```julia
-	..\01.Production code and results\PD_Training_2LyCV_SHAP_Grid_MultiSt_ClassImb_v7.jl
+	src/training/PD_Training_2LyCV_SHAP_Grid_MultiSt_ClassImb_v7.jl
 	```
   
 	b. Run the notebook so all dependencies are loaded and installed, the notebook will start with 'quick start' parameters for a fast 
 	   1st run
    
-	c. Change the configuration paramters to the recommended settings to match the paper results:
+	c. Change the configuration parameters to the recommended settings to match the paper results:
 
 		-  Tick checkbox "Generate files" to Export results to csv and jl2d files
    		-  Nr of Outer Folds: 5
@@ -152,29 +169,34 @@ All package dependencies are loaded directly inside the Pluto notebooks.
 		-  Grid Resolution: 7 (grid search 7x7)
 		-  Nr Models for AdaBoost: 30
 	
-	This files will be generated and must be copied to the visualization folder:
+	The following files are written automatically to the `outputs/` subdirectories — no manual copying is required:
 
-   		-  results_ADASYN_yyyymmdd_HHMMSS.jld2
-		-  subject_predictions_detailed.csv
-		-  subject_level_data_yyyymmdd_HHMMSS
-		-  results_baseline_(ADASYN)_yyyymmdd_HHMMSS.csv
-		-  results_baseline_female_(ADASYN)_yyyymmdd_HHMMSS.csv
-		-  results_baseline_male_(ADASYN)_yyyymmdd_HHMMSS.csv
-		-  results_female_(ADASYN)_yyyymmdd_HHMMSS.csv
-		-  results_male_(ADASYN)_yyyymmdd_HHMMSS.csv
-		-  results_sex aware_(ADASYN)_yyyymmdd_HHMMSS.csv
-		-  shap_baseline_sex_stratified_ADASYN_yyyymmdd_HHMMSS.csv
-		-  inner_fold_metrics_ADASYN_yyyymmdd_HHMMSS.csv
+   		-  outputs/models/results_ADASYN_yyyymmdd_HHMMSS.jld2
+		-  outputs/predictions/subject_predictions_detailed.csv
+		-  outputs/predictions/subject_level_data_yyyymmdd_HHMMSS.csv
+		-  outputs/metrics/results_baseline_(ADASYN)_yyyymmdd_HHMMSS.csv
+		-  outputs/metrics/results_baseline_female_(ADASYN)_yyyymmdd_HHMMSS.csv
+		-  outputs/metrics/results_baseline_male_(ADASYN)_yyyymmdd_HHMMSS.csv
+		-  outputs/metrics/results_female_(ADASYN)_yyyymmdd_HHMMSS.csv
+		-  outputs/metrics/results_male_(ADASYN)_yyyymmdd_HHMMSS.csv
+		-  outputs/metrics/results_sex aware_(ADASYN)_yyyymmdd_HHMMSS.csv
+		-  outputs/shap/shap_baseline_sex_stratified_ADASYN_yyyymmdd_HHMMSS.csv
+		-  outputs/metrics/inner_fold_metrics_ADASYN_yyyymmdd_HHMMSS.csv
 
 	d. Run the **"Inner Fold Metric Extraction (Second Pass)"** section to generate
 	   sex-stratified inner-fold validation metrics. The skip checkbox defaults to **off**
 	   (always re-runs); enable it to skip extraction when the data are already stored in
 	   the JLD2.
 
-7. open the visualization notebook and update the names of the files to be loaded with ones genetared during your run:
+6. Open the visualization notebook:
+
 	```julia
-	..\02.Visualization code\PD_Visuals_ADSYN_models_v5.jl
+	src/visualization/PD_Visuals_ADSYN_models_v5.jl
 	```
+
+	The notebook loads the JLD2 and CSVs from the `outputs/` subdirectories automatically.
+	Update the JLD2 filename near the top of the notebook to match the timestamp of your run.
+
 ## Dataset
 
 https://www.kaggle.com/datasets/porinitahoque/parkinsons-disease-pd-data-analysis/data
@@ -190,6 +212,8 @@ Subject-level fold assignments are deterministic.
 Feature selection, resampling, and tuning are fully nested.
 
 No test data are used during feature selection or oversampling.
+
+All pipeline functions accept an explicit `rng_seed::Int` parameter; global Julia RNG state is never relied upon. In `predict_with_tuned_neural`, the fallback model refit is preceded by `Random.seed!(rng)` so the else-branch is deterministic and does not contaminate subsequent operations.
 
 ##  Disclaimer
 
