@@ -1,0 +1,11 @@
+Rank,Feature,Category,Mean_SHAP,Std_SHAP
+1,std_6th_delta,MFCC,0.0333,0.0229
+2,tqwt_entropy_shannon_dec_19,TQWT,0.0303,0.0274
+3,std_6th_delta_delta,MFCC,0.0291,0.0209
+4,std_delta_delta_log_energy,MFCC,0.0269,0.0308
+5,DFA,Baseline,0.026,0.0221
+6,tqwt_kurtosisValue_dec_17,TQWT,0.0232,0.0155
+7,tqwt_kurtosisValue_dec_35,TQWT,0.0224,0.0198
+8,tqwt_TKEO_std_dec_6,TQWT,0.0211,0.0273
+9,tqwt_energy_dec_18,TQWT,0.0208,0.0244
+10,tqwt_energy_dec_26,TQWT,0.0196,0.0221
