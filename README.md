@@ -2,7 +2,7 @@
 
 This repository accompanies the following publication:
 
-> Briscoe, D. K., Castedo, R. V., Clarke, P., Di Stella, D., & Deng, J. (2025).
+> Briscoe, D. K., Velasco Castedo, R., Clarke, P., Di Stella, D., & Deng, J. (2025).
 > "Interpretable Voice-Based Parkinson's Detection: Sex-Specific Acoustic Biomarkers
 > with Subject-Level Nested Cross-Validation."
 > Available at SSRN: https://ssrn.com/abstract=6430163
@@ -12,7 +12,7 @@ This repository accompanies the following publication:
 ## Citation
 ```bibtex
 @article{briscoe2025parkinson,
-  author    = {Briscoe, Dana K. and Castedo, Rolando Velasco and Clarke, Paul
+  author    = {Briscoe, Dana K. and Velasco Castedo, Rolando and Clarke, Paul
                and {Di Stella}, Domenic and Deng, Jeremiah},
   title     = {Interpretable Voice-Based {Parkinson's} Detection: Sex-Specific
                Acoustic Biomarkers with Subject-Level Nested Cross-Validation},
