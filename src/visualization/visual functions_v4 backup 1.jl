@@ -195,11 +195,14 @@ function quick_mcc_comparison_from_nested_results(
         linewidth   = 3.0,
         xticks      = (1:nrow(best_results), x_labels),
         xrotation   = 0,
-            ylim        = (0, 0.82),
-            size        = (950, 600),
-            bottom_margin = 12mm,
-            tickfontsize  = 16,
-            guidefontsize = 18,
+        ylim        = (0, 0.8),
+        size        = (950, 600),
+        bottom_margin = 10mm,
+
+		    tickfontsize  = 12,
+    guidefontsize = 12,
+    # titlefontsize = 14,
+    # legendfontsize = 12
     )
 
     # -------------------------------------------------------------------------
@@ -240,8 +243,10 @@ function quick_mcc_comparison_from_nested_results(
             row.Features,
             row.MCC
         )
-            y_pos = min(row.MCC + 0.11, 0.79)
-            annotate!(p, i, y_pos, Plots.text(ann_text, 14, :center, :top, :black, "Helvetica Bold"))
+        # y_pos = min(row.MCC + 0.065, 0.78)
+        # annotate!(p, i, y_pos, text(ann_text, 8, :black, :center, :bold))
+		y_pos = min(row.MCC + 0.1, 0.78)
+		annotate!(p, i, y_pos, Plots.text(ann_text, 12, :center, :top, :black, "Helvetica Bold"))
 # or try: "DejaVu Sans Bold"
 
     end
@@ -386,13 +391,13 @@ function plot_jaccard_comparison(jaccard_all_datasets, top_n_feats_candidates,
         title  = title,
         legend = :bottomright,
         ylim   = ylim,
-            left_margin = 12mm,
-            right_margin = 12mm,
-            bottom_margin = 12mm, 
-            titlefontsize = 16,
-            guidefontsize  = 18,  
-            tickfontsize=16,
-            legendfontsize = 14, 
+        left_margin = 10mm,
+        right_margin = 10mm,
+        bottom_margin = 10mm,
+        titlefontsize = 12,
+        guidefontsize  = 14,  
+        tickfontsize=12,
+        legendfontsize = 12, 
         size = size,
         dpi = dpi
     )
@@ -407,7 +412,7 @@ function plot_jaccard_comparison(jaccard_all_datasets, top_n_feats_candidates,
             label     = dataset_labels[ds],
             color     = line_colors[ds],
             linestyle = :solid,
-                linewidth = 6
+            linewidth = 4
         )
     end
     
@@ -437,7 +442,6 @@ end
 # Returns
 #- Vector of Plots.Plot objects, one per dataset
 # ========================================================
-
 function plot_top_performers(all_results, dataset_order, top_n_feats_candidates, 
                              n_outer_folds, classifiers,
                              classifier_display_names, classifier_colors, method_markers;
@@ -522,15 +526,15 @@ function plot_top_performers(all_results, dataset_order, top_n_feats_candidates,
             grid=true,
             gridalpha=0.3,
             ylim=ylim,
-            xticks=10:10:100, 
-                titlefontsize  = 17,
-                guidefontsize  = 16,
-                tickfontsize   = 14,
-                legendfontsize = 14,  
-                left_margin   = 10mm,
-                bottom_margin = 10mm,
-                right_margin  = 8mm,
-                top_margin    = 10mm,
+            xticks=10:10:100,
+            titlefontsize  = 13,
+            guidefontsize  = 12,
+            tickfontsize   = 11,
+            legendfontsize = 11,  
+            left_margin   = 8mm,
+            bottom_margin = 8mm,
+            right_margin  = 6mm,
+            top_margin    = 8mm,
 
         )
         
@@ -540,14 +544,11 @@ function plot_top_performers(all_results, dataset_order, top_n_feats_candidates,
                 feature_counts,
                 mcc_data[method][classifier],
                 label="$(classifier_display_names[classifier]) ($method)",
-                # linewidth=2.5,
-                    linewidth=4,  
+                linewidth=2.5,
                 linestyle=:solid,
                 marker=method_markers[method],
-                # markersize=5,
-                    markersize=8,   
-                # markerstrokewidth=0,
-                markerstrokewidth=0.8,
+                markersize=5,
+                markerstrokewidth=0,
                 color=classifier_colors[classifier]
             )
         end

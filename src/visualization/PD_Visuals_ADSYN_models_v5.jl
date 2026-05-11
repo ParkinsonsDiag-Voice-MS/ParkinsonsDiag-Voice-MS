@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.20.21
+# v0.20.16
 
 using Markdown
 using InteractiveUtils
@@ -379,7 +379,8 @@ classifiers = [
         "SVM_RBF_TUNED"       => :xcross)
 	method_markers = Dict(
         "Boruta" => :circle,
-        "mRMR"   => :xcross)
+        # "mRMR"   => :xcross)
+		"mRMR"   => :diamond)
 	
 	fig3 = plot_top_performers( all_results,
 									 dataset_order_core,
@@ -393,7 +394,8 @@ classifiers = [
 # Display in 2×2 grid
     Plots.plot(fig3..., 
          layout=(2, 2), 
-         size=(950, 600),
+		   size=(1800, 1200), 
+		   dpi = 300
          )
 
 
@@ -519,13 +521,14 @@ cm_csv_path = "../../outputs/tables/Best_models_confusion_matrices_table.csv"
         ax.yreversed = true
 
         # axis label font sizes ("Actual", "Predicted")
-        ax.xlabelsize = 16 
-        ax.ylabelsize = 16 
+		    ax.xlabelsize = 20 
+        	ax.ylabelsize = 20 
 
         # tick label font sizes (HC/PD)
-        ax.xticklabelsize = 14 
-        ax.yticklabelsize = 14 
+			ax.xticklabelsize = 20 
+	        ax.yticklabelsize = 20 
 
+		
         # Draw fixed-color quadrants
         colors = [
             col_TN  col_FP;
@@ -557,14 +560,17 @@ cm_csv_path = "../../outputs/tables/Best_models_confusion_matrices_table.csv"
     end
 
     # Build the 2×3 figure
-    fig4 = CairoMakie.Figure(size=(1500, 850))
+		fig4 = CairoMakie.Figure(size=(1650, 950))
+		rowgap!(fig4.layout, 35)
+	
     axs = [CairoMakie.Axis(fig4[r, c]) for r in 1:2, c in 1:3]
 
     for (k, (model_name, model_title)) in enumerate(zip(order, model_titles))
         r = ceil(Int, k/3)
         c = ((k - 1) % 3) + 1
         ax = axs[r, c]
-        ax.titlesize = 18 
+			ax.titlesize = 20
+
 
         if !haskey(models, model_name)
             ax.title = "$(model_name)\n(not found in CSV)"
@@ -610,8 +616,8 @@ md"""
 
 # ╔═╡ ac176e07-d6de-4abe-a1fd-b24dea036c69
 begin
-    # Set default font for consistency
-	default(fontfamily="Aptos")
+	# Set default font for consistency
+		default(fontfamily="Arial")
 
 	# Load icons
 	union_icon_b64 = base64encode(read("../../assets/union_symbol.png"))
@@ -718,11 +724,11 @@ begin
 		# Function to create group icon HMTL
 		function group_symbol(grp)
 		    if grp == "Both"
-		        return """<img src="data:image/png;base64,$union_icon_b64" style="height: 18px; vertical-align: middle;" />"""
+		        return """<img src="data:image/png;base64,$union_icon_b64" style="height: 28px; vertical-align: middle;" />"""
 		    elseif grp == "Male"
-		        return """<img src="data:image/png;base64,$male_icon_b64" style="height: 18px; vertical-align: middle;" />"""
+		        return """<img src="data:image/png;base64,$male_icon_b64" style="height: 28px; vertical-align: middle;" />"""
 		    else
-		        return """<img src="data:image/png;base64,$female_icon_b64" style="height: 18px; vertical-align: middle;" />"""
+		        return """<img src="data:image/png;base64,$female_icon_b64" style="height: 28px; vertical-align: middle;" />"""
 		    end
 		end
         
@@ -746,10 +752,10 @@ begin
             push!(html_rows, """
             <tr>
                 <td style="text-align: center; padding: 8px 6px; border-bottom: 1px solid #e5e7eb;">$(group_symbol(group))</td>
-                <td style="text-align: left; padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">$feature_name</td>
-<td style="text-align: center; padding: 8px 12px; border-bottom: 1px solid #e5e7eb; width: 100px; $male_style $male_weight">$(@sprintf("%.3f", male_val))</td>
-<td style="text-align: center; padding: 8px 12px; border-bottom: 1px solid #e5e7eb; width: 100px; $female_style $female_weight">$(@sprintf("%.3f", female_val))</td>                <td style="text-align: center; padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">
-                    <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background-color: $cat_color;"></span>
+                <td style="text-align: left; padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-size: 18px;">$feature_name</td>
+<td style="text-align: center; padding: 8px 12px; border-bottom: 1px solid #e5e7eb; width: 180px; font-size: 18px; $male_style $male_weight">$(@sprintf("%.3f", male_val))</td>
+<td style="text-align: center; padding: 8px 12px; border-bottom: 1px solid #e5e7eb; width: 180px; font-size: 18px; $female_style $female_weight">$(@sprintf("%.3f", female_val))</td>                <td style="text-align: center; padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">
+                    <span style="display: inline-block; width: 16px; height: 16px; border-radius: 50%; background-color: $cat_color;"></span>
                 </td>
             </tr>
             """)
@@ -762,18 +768,19 @@ begin
         overlap_pct = round(Int, 100 * n_both / n_features)
         
         table_html = """
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+<div style="font-family: Arial, Helvetica, sans-serif; font-size: 20px;">
+			
             <h3 style="text-align: center; margin-bottom: 5px;">$title</h3>
-            <p style="text-align: center; color: #6b7280; margin-bottom: 15px; font-size: 14px;">
+            <p style="text-align: center; color: black; margin-bottom: 15px; font-size: 20px;">
                 Union of Top-$n_features Features Selected by Boruta
             </p>
             <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
                 <thead>
                     <tr style="background-color: #f3f4f6;">
-                        <th style="text-align: center; padding: 10px 6px; border-bottom: 2px solid #d1d5db; font-weight: 600;">Grp</th>
-                        <th style="text-align: left; padding: 10px 12px; border-bottom: 2px solid #d1d5db; font-weight: 600;">Feature</th>
-<th style="text-align: center; padding: 10px 12px; border-bottom: 2px solid #d1d5db; font-weight: 600; color: #3b82f6; width: 100px;">Male</th>
-<th style="text-align: center; padding: 10px 12px; border-bottom: 2px solid #d1d5db; font-weight: 600; color: #ec4899; width: 100px;">Female</th>                        <th style="text-align: center; padding: 10px 12px; border-bottom: 2px solid #d1d5db; font-weight: 600;">Cat.</th>
+                        <th style="text-align: center; padding: 10px 6px; border-bottom: 2px solid #d1d5db; font-weight: 600; font-size: 18px; ">Grp</th>
+                        <th style="text-align: left; padding: 10px 12px; border-bottom: 2px solid #d1d5db; font-weight: 600; font-size: 18px; ">Feature</th>
+<th style="text-align: center; padding: 10px 12px; border-bottom: 2px solid #d1d5db; font-weight: 600; font-size: 18px;  color: #0072c3; width: 180px;">Male</th>
+<th style="text-align: center; padding: 10px 12px; border-bottom: 2px solid #d1d5db; font-weight: 600; font-size: 18px; color: #d02670; width: 180px;">Female</th>                        <th style="text-align: center; padding: 10px 12px; border-bottom: 2px solid #d1d5db; font-weight: 600;">Cat.</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -782,7 +789,7 @@ begin
             </table>
             
             <!-- Group Legend -->
-            <div style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; font-size: 13px; margin-bottom: 15px;">
+            <div style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; font-size: 18px; margin-bottom: 15px;">
                 <div style="display: flex; align-items: center; gap: 5px;">
                     <img src="data:image/png;base64,$union_icon_b64" style="height: 22px; vertical-align: middle;" />
                     <span>Both top-$n_features</span>
@@ -798,7 +805,7 @@ begin
             </div>
             
             <!-- Category Legend -->
-            <div style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; font-size: 13px;">
+            <div style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; font-size: 18px;">
                 <div style="display: flex; align-items: center; gap: 5px;">
                     <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background-color: #FE6100;"></span>
                     <span>MFCC</span>
@@ -820,7 +827,8 @@ begin
         </div>
         """
         
-        return HTML(table_html)
+        # return HTML(table_html)
+			return table_html
     end
     
     # Clean data
@@ -828,21 +836,30 @@ begin
     female_clean = dropmissing(female_shap, :Feature)
     
     # Display heatmap
-    shap_heatmap_table(male_clean, female_clean, n_features=10)
+    # shap_heatmap_table(male_clean, female_clean, n_features=10)
+
+	fig5_heatmap_html = shap_heatmap_table(male_clean, female_clean, n_features=10)
+		open("../../outputs/figures/Figure5_SHAP_heatmap.html", "w") do io
+		    write(io, fig5_heatmap_html)
+		end
+
+HTML(fig5_heatmap_html)
 end
 
 # ╔═╡ 31e65220-129d-40b7-9ece-b90a6fe96d54
 begin
     # Set default font for consistency
-	default(fontfamily="Aptos")
-
+	default(fontfamily="Arial")
+	
 	# Import data from CSV files
 	male_shap_df   = CSV.read("../../outputs/shap/male_shap_mrmr_20.csv", DataFrame)
 	female_shap_df = CSV.read("../../outputs/shap/female_shap_mrmr_10.csv", DataFrame)
 	
     # Define bar color
-	male_bar_color   = colorant"#09CAFF"
-    female_bar_color = colorant"#FF91F0"
+		male_bar_color   = colorant"#1192e8"
+	    female_bar_color = colorant"#ee5396"
+
+	
 
 	# Use a shared x-axis scale (rounded up to the next 0.02) so male and female plots are directly comparable
 	max_val = max(maximum(male_shap_df.Mean_SHAP), maximum(female_shap_df.Mean_SHAP))
@@ -864,20 +881,26 @@ begin
 	        xt_ = (tick_pos, tick_lab)
 	    else
 	        xlims_ = (0.00, xmax)
-	        xt_ = 0.0:0.02:xmax
+	        # xt_ = 0.0:0.02:xmax
+			tick_pos = collect(0.0:0.02:xmax)
+			tick_lab = [t == 0 ? "0" : @sprintf("%.2f", t) for t in tick_pos]
+			xt_ = (tick_pos, tick_lab)
 	    end
 	
 		bar(
 		    y, x;
 		    orientation = :horizontal,
 		    color = bar_color,
+			fillalpha = 0.95,
 		    legend = false,
 		    title = title_str,
 		    xlabel = "Mean SHAP",
-			xguidefont = font("Aptos", 8),
+			# xguidefont = font("Aptos", 8),
+				xguidefont = font("Arial", 13),
 		    xlims = xlims_,
 		    xticks = xt_,
-			xtickfont = font("Aptos", 7),
+			# xtickfont = font("Aptos", 7),
+				xtickfont = font("Arial", 12),
 		    yflip = true,
 			bar_width=0.5,
 			linewidth = 0,
@@ -895,26 +918,42 @@ begin
 	# Adjust plot margins
 	Plots.plot!(
 	    p_male;
-	    right_margin = 1mm,
+	    # right_margin = 1mm,
+		    left_margin  = 10mm,   # outer left buffer
+		    right_margin = 2mm     # small inner gap
 	)
 	Plots.plot!(
 	    p_female;
-	    left_margin  = 1mm,
+	    # left_margin  = 1mm,
+		    left_margin  = 2mm,    # small inner gap
+		    right_margin = 10mm    # outer right buffer
 	)
 
 	# Define X-axis scale
 	ticks  = 0:0.02:0.08
-	labels = [@sprintf("%.2f", t) for t in ticks]
+	# labels = [@sprintf("%.2f", t) for t in ticks]
+		labels = [t == 0 ? "0" : @sprintf("%.2f", t) for t in ticks]
 	
 	# Reverse x-axis for male plot
 	Plots.plot!(p_male; xticks=(-ticks, labels))
 	
 	# Display plots side-by-side
-	Plots.plot(p_male, p_female; layout=grid(1, 2, wspace = 0.1), size=(479,320), bottom_margin = 12mm, yaxis = false)
+	fig5_barplots = Plots.plot(p_male, p_female; 
+							   layout=grid(1, 2, wspace = 0.1), 
+			   # size=(479,320),
+				   size=(1000,500),
+			   # left_margin = 10mm,
+    		# 	right_margin = 10mm,
+			   bottom_margin = 12mm, yaxis = false)
+
+	savefig(fig5_barplots, "../../outputs/figures/Figure5_SHAP_barplots_bottom_panel.png")
+	savefig(fig5_barplots, "../../outputs/figures/Figure5_SHAP_barplots_bottom_panel.pdf")
+
+fig5_barplots
 end
 
 # ╔═╡ 5ef83150-411c-4bc9-9070-0bb0ef7448f0
-LocalResource("../../outputs/figures/Figure5_heatmap_and_bar_plots.jpg")
+LocalResource("../../outputs/figures/Figure5_SHAP_heatmap_and_barplots.png")
 
 # ╔═╡ 821b803d-7f43-466e-9a73-47775d7de9ee
 md"""
@@ -1277,9 +1316,9 @@ StatsPlots = "~0.15.8"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.12.2"
+julia_version = "1.11.6"
 manifest_format = "2.0"
-project_hash = "b340a0d0ca763e25c050a3367251e95334064677"
+project_hash = "ec660ae54470b555b7e7a2db2b4cbc9a69de74ed"
 
 [[deps.ARFFFiles]]
 deps = ["CategoricalArrays", "Dates", "Parsers", "Tables"]
@@ -1645,7 +1684,7 @@ weakdeps = ["Dates", "LinearAlgebra"]
 [[deps.CompilerSupportLibraries_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
-version = "1.3.0+1"
+version = "1.1.1+0"
 
 [[deps.CompositionsBase]]
 git-tree-sha1 = "802bb88cd69dfd1509f6670416bd4434015693ad"
@@ -1808,7 +1847,7 @@ version = "0.9.5"
 [[deps.Downloads]]
 deps = ["ArgTools", "FileWatching", "LibCURL", "NetworkOptions"]
 uuid = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
-version = "1.7.0"
+version = "1.6.0"
 
 [[deps.EarCut_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -2406,11 +2445,6 @@ git-tree-sha1 = "4255f0032eafd6451d707a51d5f0248b8a165e4d"
 uuid = "aacddb02-875f-59d6-b918-886e6ef4fbf8"
 version = "3.1.3+0"
 
-[[deps.JuliaSyntaxHighlighting]]
-deps = ["StyledStrings"]
-uuid = "ac6e5ff7-fb65-4e79-a425-ec3bc9c03011"
-version = "1.12.0"
-
 [[deps.JuliaVariables]]
 deps = ["MLStyle", "NameResolution"]
 git-tree-sha1 = "49fb3cb53362ddadb4415e9b73926d6b40709e70"
@@ -2521,24 +2555,24 @@ uuid = "b27032c2-a3e7-50c8-80cd-2d36dbcbfd21"
 version = "0.6.4"
 
 [[deps.LibCURL_jll]]
-deps = ["Artifacts", "LibSSH2_jll", "Libdl", "OpenSSL_jll", "Zlib_jll", "nghttp2_jll"]
+deps = ["Artifacts", "LibSSH2_jll", "Libdl", "MbedTLS_jll", "Zlib_jll", "nghttp2_jll"]
 uuid = "deac9b47-8bc7-5906-a0fe-35ac56dc84c0"
-version = "8.15.0+0"
+version = "8.6.0+0"
 
 [[deps.LibGit2]]
-deps = ["LibGit2_jll", "NetworkOptions", "Printf", "SHA"]
+deps = ["Base64", "LibGit2_jll", "NetworkOptions", "Printf", "SHA"]
 uuid = "76f85450-5226-5b5a-8eaa-529ad045b433"
 version = "1.11.0"
 
 [[deps.LibGit2_jll]]
-deps = ["Artifacts", "LibSSH2_jll", "Libdl", "OpenSSL_jll"]
+deps = ["Artifacts", "LibSSH2_jll", "Libdl", "MbedTLS_jll"]
 uuid = "e37daf67-58a4-590a-8e99-b0245dd2ffc5"
-version = "1.9.0+0"
+version = "1.7.2+0"
 
 [[deps.LibSSH2_jll]]
-deps = ["Artifacts", "Libdl", "OpenSSL_jll"]
+deps = ["Artifacts", "Libdl", "MbedTLS_jll"]
 uuid = "29816b5a-b9ab-546f-933c-edad1886dfa8"
-version = "1.11.3+1"
+version = "1.11.0+1"
 
 [[deps.Libdl]]
 uuid = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
@@ -2583,7 +2617,7 @@ version = "2.41.2+0"
 [[deps.LinearAlgebra]]
 deps = ["Libdl", "OpenBLAS_jll", "libblastrampoline_jll"]
 uuid = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
-version = "1.12.0"
+version = "1.11.0"
 
 [[deps.LogExpFunctions]]
 deps = ["DocStringExtensions", "IrrationalConstants", "LinearAlgebra"]
@@ -2822,7 +2856,7 @@ uuid = "dbb5928d-eab1-5f90-85c2-b9b0edb7c900"
 version = "0.4.3"
 
 [[deps.Markdown]]
-deps = ["Base64", "JuliaSyntaxHighlighting", "StyledStrings"]
+deps = ["Base64"]
 uuid = "d6f4376e-aef5-505a-96c1-9c027394607a"
 version = "1.11.0"
 
@@ -2839,8 +2873,7 @@ uuid = "739be429-bea8-5141-9913-cc70e7f3736d"
 version = "1.1.9"
 
 [[deps.MbedTLS_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "926c6af3a037c68d02596a44c22ec3595f5f760b"
+deps = ["Artifacts", "Libdl"]
 uuid = "c8ffd9c3-330d-5841-b78e-0817d7145fa1"
 version = "2.28.6+0"
 
@@ -2891,7 +2924,7 @@ version = "0.3.4"
 
 [[deps.MozillaCACerts_jll]]
 uuid = "14a3606d-f60d-562e-9121-12d972cd8159"
-version = "2025.5.20"
+version = "2023.12.12"
 
 [[deps.MultivariateStats]]
 deps = ["Arpack", "Distributions", "LinearAlgebra", "SparseArrays", "Statistics", "StatsAPI", "StatsBase"]
@@ -2957,7 +2990,7 @@ version = "1.1.1"
 
 [[deps.NetworkOptions]]
 uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
-version = "1.3.0"
+version = "1.2.0"
 
 [[deps.Observables]]
 git-tree-sha1 = "7438a59546cf62428fc9d1bc94729146d37a7225"
@@ -2994,7 +3027,7 @@ version = "0.3.29+0"
 [[deps.OpenBLAS_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
 uuid = "4536629a-c528-5b80-bd46-f80d51c5b363"
-version = "0.3.29+0"
+version = "0.3.27+1"
 
 [[deps.OpenEXR]]
 deps = ["Colors", "FileIO", "OpenEXR_jll"]
@@ -3011,7 +3044,7 @@ version = "3.2.4+0"
 [[deps.OpenLibm_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "05823500-19ac-5b8b-9628-191a04bc5112"
-version = "0.8.7+0"
+version = "0.8.5+0"
 
 [[deps.OpenML]]
 deps = ["ARFFFiles", "HTTP", "JSON", "Markdown", "Pkg", "Scratch"]
@@ -3032,7 +3065,8 @@ uuid = "4d8831e6-92b7-49fb-bdf8-b643e874388c"
 version = "1.6.1"
 
 [[deps.OpenSSL_jll]]
-deps = ["Artifacts", "Libdl"]
+deps = ["Artifacts", "JLLWrappers", "Libdl"]
+git-tree-sha1 = "f19301ae653233bc88b1810ae908194f07f8db9d"
 uuid = "458c3c95-2e84-50aa-8efc-19380b2a3a95"
 version = "3.5.4+0"
 
@@ -3072,7 +3106,7 @@ version = "1.8.1"
 [[deps.PCRE2_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "efcefdf7-47ab-520b-bdef-62a2eaa19f15"
-version = "10.44.0+1"
+version = "10.42.0+1"
 
 [[deps.PDMats]]
 deps = ["LinearAlgebra", "SparseArrays", "SuiteSparse"]
@@ -3135,7 +3169,7 @@ version = "0.44.2+0"
 [[deps.Pkg]]
 deps = ["Artifacts", "Dates", "Downloads", "FileWatching", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "Random", "SHA", "TOML", "Tar", "UUIDs", "p7zip_jll"]
 uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
-version = "1.12.0"
+version = "1.11.0"
 weakdeps = ["REPL"]
 
     [deps.Pkg.extensions]
@@ -3289,7 +3323,7 @@ version = "2.11.2"
     Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
 
 [[deps.REPL]]
-deps = ["InteractiveUtils", "JuliaSyntaxHighlighting", "Markdown", "Sockets", "StyledStrings", "Unicode"]
+deps = ["InteractiveUtils", "Markdown", "Sockets", "StyledStrings", "Unicode"]
 uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 version = "1.11.0"
 
@@ -3494,7 +3528,7 @@ version = "1.2.2"
 [[deps.SparseArrays]]
 deps = ["Libdl", "LinearAlgebra", "Random", "Serialization", "SuiteSparse_jll"]
 uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
-version = "1.12.0"
+version = "1.11.0"
 
 [[deps.SparseInverseSubset]]
 deps = ["LinearAlgebra", "SparseArrays", "SuiteSparse"]
@@ -3648,7 +3682,7 @@ uuid = "4607b0f0-06f3-5cda-b6b1-a6196a1729e9"
 [[deps.SuiteSparse_jll]]
 deps = ["Artifacts", "Libdl", "libblastrampoline_jll"]
 uuid = "bea87d4a-7f5b-5778-9afe-8cc45184846c"
-version = "7.8.3+2"
+version = "7.7.0+0"
 
 [[deps.TOML]]
 deps = ["Dates"]
@@ -3988,7 +4022,7 @@ version = "1.6.0+0"
 [[deps.Zlib_jll]]
 deps = ["Libdl"]
 uuid = "83775a58-1f1d-513f-b197-d71354ab007a"
-version = "1.3.1+2"
+version = "1.2.13+1"
 
 [[deps.Zstd_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
@@ -4059,7 +4093,7 @@ version = "0.17.4+0"
 [[deps.libblastrampoline_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "8e850b90-86db-534c-a0d3-1478176c7d93"
-version = "5.15.0+0"
+version = "5.11.0+0"
 
 [[deps.libdecor_jll]]
 deps = ["Artifacts", "Dbus_jll", "JLLWrappers", "Libdl", "Libglvnd_jll", "Pango_jll", "Wayland_jll", "xkbcommon_jll"]
@@ -4130,7 +4164,7 @@ version = "1.1.7+0"
 [[deps.nghttp2_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "8e850ede-7688-5339-a07c-302acd2aaf8d"
-version = "1.64.0+1"
+version = "1.59.0+0"
 
 [[deps.oneTBB_jll]]
 deps = ["Artifacts", "JLLWrappers", "LazyArtifacts", "Libdl"]
@@ -4139,9 +4173,9 @@ uuid = "1317d2d5-d96f-522e-a858-c73665f53c3e"
 version = "2022.0.0+1"
 
 [[deps.p7zip_jll]]
-deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
+deps = ["Artifacts", "Libdl"]
 uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
-version = "17.7.0+0"
+version = "17.4.0+2"
 
 [[deps.x264_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
@@ -4175,7 +4209,7 @@ version = "1.13.0+0"
 # ╟─760f32a7-c7e6-42de-987e-88dc5b293c67
 # ╟─01c08aed-45f2-4367-8d6c-425a61b7e7d2
 # ╟─2af4be8c-6c14-42a1-8a65-d2744ca9f002
-# ╠═7ea718e9-c1cd-49c3-bb11-a878c0208ca9
+# ╟─7ea718e9-c1cd-49c3-bb11-a878c0208ca9
 # ╠═a1b2c3d4-e5f6-4789-abcd-ef0123456789
 # ╠═b2c3d4e5-f6a7-4890-bcde-f01234567890
 # ╟─39e262ee-49c8-4a91-9afa-b928cca89347
@@ -4183,19 +4217,19 @@ version = "1.13.0+0"
 # ╟─9280ad56-07aa-4ba0-bd10-f15ad4393c3f
 # ╠═693a6685-94ca-4411-8428-f69cab82ea9e
 # ╟─3e2b42e6-ed38-49a6-862e-6bfb185c6820
-# ╠═fc342c8b-9eee-481f-896d-0d6eb0848600
+# ╟─fc342c8b-9eee-481f-896d-0d6eb0848600
 # ╟─5b88c326-d26a-49fb-bc90-d5159ac9726b
 # ╠═8dddd871-4e30-4f55-a401-fb2fe0b20d95
-# ╠═0fc4cb39-e064-4c7d-865f-e42973233871
+# ╟─0fc4cb39-e064-4c7d-865f-e42973233871
 # ╟─eaae31bd-ad32-4c9b-8305-e5525156fec4
 # ╠═ee35adca-dcbc-4310-8476-772941ba4487
 # ╟─89911a5c-29e0-478e-9e95-944fbf583690
 # ╟─e80226af-7217-4eb4-8ba8-d42c917f93ab
-# ╟─b02a7700-7544-4703-8d18-40c6b24ead38
+# ╠═b02a7700-7544-4703-8d18-40c6b24ead38
 # ╠═ed054bea-ee00-46aa-9e19-0da8f8a0ee6a
 # ╟─41f8dcef-516d-47ef-93b9-24ddd4edb56a
-# ╟─ac176e07-d6de-4abe-a1fd-b24dea036c69
-# ╟─31e65220-129d-40b7-9ece-b90a6fe96d54
+# ╠═ac176e07-d6de-4abe-a1fd-b24dea036c69
+# ╠═31e65220-129d-40b7-9ece-b90a6fe96d54
 # ╠═5ef83150-411c-4bc9-9070-0bb0ef7448f0
 # ╟─821b803d-7f43-466e-9a73-47775d7de9ee
 # ╠═0dff516f-5670-4e2a-8003-183d27ef9a0d
